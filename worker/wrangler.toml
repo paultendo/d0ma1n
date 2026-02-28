@@ -1,0 +1,26 @@
+name = "d0ma1n"
+main = "index.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+# Custom domain (requires DNS zone on Cloudflare)
+routes = [
+  { pattern = "d0ma1n.app", custom_domain = true }
+]
+
+[build]
+command = ""
+
+[observability]
+[observability.logs]
+enabled = true
+invocation_logs = true
+
+[observability.traces]
+enabled = true
+
+# KV namespace for scan result caching
+[[kv_namespaces]]
+binding = "SCAN_CACHE"
+id = "7fce8572176d42d8b8e981f357534f19"

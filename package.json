@@ -1,0 +1,54 @@
+{
+  "name": "d0ma1n",
+  "version": "0.1.0",
+  "description": "Domain & brand name spoofing scanner powered by SSIM-scored confusable maps",
+  "type": "module",
+  "bin": {
+    "d0ma1n": "dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "namespace-guard": "^0.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0",
+    "wrangler": "^4.69.0"
+  },
+  "keywords": [
+    "domain",
+    "spoofing",
+    "homoglyph",
+    "confusable",
+    "phishing",
+    "brand-protection",
+    "unicode",
+    "idn",
+    "punycode",
+    "dns"
+  ],
+  "license": "MIT",
+  "author": "Paul Wood (@paultendo)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paultendo/d0ma1n"
+  }
+}

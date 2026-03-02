@@ -8,9 +8,9 @@ export function renderLandingPage(): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>d0ma1n - Brand protection from lookalike domains</title>
-  <meta name="description" content="Protect your brand from lookalike domain attacks. 1,397 SSIM-scored confusable pairs across 12 scripts and 230 fonts.">
+  <meta name="description" content="Protect your brand from lookalike domain attacks. 4,174 visually-scored confusable pairs across 12 scripts and 245 fonts.">
   <meta property="og:title" content="d0ma1n - Brand protection from lookalike domains">
-  <meta property="og:description" content="Protect your brand from lookalike domain attacks. 1,397 SSIM-scored pairs, 12 scripts, font-aware scoring.">
+  <meta property="og:description" content="Protect your brand from lookalike domain attacks. 4,174 visually-scored pairs, 12 scripts, font-aware scoring.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://d0ma1n.app">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -589,8 +589,8 @@ const FEATURES_SECTION = `
   <h2 class="section-title">What makes d0ma1n different</h2>
   <div class="features-grid">
     <div class="feature-card">
-      <h3>1,397 scored pairs</h3>
-      <p>Not a static homoglyph table. Every confusable pair is SSIM-scored across 230 fonts, with p95 and max metrics. 793 pairs are novel discoveries beyond TR39.</p>
+      <h3>4,174 scored pairs</h3>
+      <p>Not a static homoglyph table. Every confusable pair is scored by vector-outline raycasting across 245 fonts, with distributional metrics. Thousands of pairs are novel discoveries beyond TR39.</p>
     </div>
     <div class="feature-card">
       <h3>12 scripts</h3>
@@ -612,10 +612,10 @@ const COMPARISON_SECTION = `
       <tr><th>Capability</th><th></th></tr>
     </thead>
     <tbody>
-      <tr><td>Confusable pairs</td><td>1,397 SSIM-scored (793 novel, beyond TR39)</td></tr>
+      <tr><td>Confusable pairs</td><td>4,174 RaySpace-scored (thousands novel, beyond TR39)</td></tr>
       <tr><td>Scripts</td><td>12 ICANN-approved IDN scripts, bidirectional</td></tr>
-      <tr><td>Scoring</td><td>Continuous 0 to 1 (p95 and max SSIM)</td></tr>
-      <tr><td>Font awareness</td><td>Best-font lookup across 74 fonts</td></tr>
+      <tr><td>Scoring</td><td>Continuous 0 to 1 (p95 and max visual similarity)</td></tr>
+      <tr><td>Font awareness</td><td>Best-font lookup across 245 fonts</td></tr>
       <tr><td>DNS resolution</td><td>A, AAAA, MX, NS with threat classification</td></tr>
       <tr><td>IDNA filtering</td><td>Only PVALID characters (registrable domains)</td></tr>
       <tr><td>Reverse lookup</td><td>Identify what a suspicious domain impersonates</td></tr>
@@ -631,7 +631,7 @@ const HOW_IT_WORKS = `
   <div class="pipeline">
     <div class="pipeline-step">
       <h4>confusable-vision</h4>
-      <p>Renders 230 fonts, computes SSIM similarity for every Unicode pair. Produces scored confusable maps.</p>
+      <p>Casts rays through 245 font outlines, measures structural similarity for every Unicode pair. Produces scored confusable maps.</p>
     </div>
     <div class="pipeline-arrow">&rarr;</div>
     <div class="pipeline-step">

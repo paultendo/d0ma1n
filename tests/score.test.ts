@@ -117,7 +117,7 @@ describe("scoreVariants", () => {
   const buckets = buildPrototypeBuckets();
 
   it("produces scored DomainVariant records", () => {
-    const raw = generateVariants("paypal", { maxEdits: 1, maxPerChar: 3 }, buckets);
+    const raw = generateVariants("paypal", { maxEdits: 1, maxPerChar: 3, scriptMode: "all" }, buckets);
     const scored = scoreVariants(raw.slice(0, 5), "com");
 
     for (const v of scored) {
@@ -146,7 +146,7 @@ describe("findBestFont", () => {
     // May or may not find a font depending on data coverage
     if (result) {
       expect(result.font).toBeTruthy();
-      expect(result.ssim).toBeGreaterThan(0);
+      expect(result.score).toBeGreaterThan(0);
     }
   });
 });

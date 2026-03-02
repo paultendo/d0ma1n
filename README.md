@@ -9,7 +9,9 @@ Try it online at [d0ma1n.app](https://d0ma1n.app) (still going live, use [d0ma1n
 
 ## How it works
 
-d0ma1n takes a domain name, generates every visually confusable variant across 12 Unicode scripts, and checks which ones are already registered. Each substitution is scored by structural similarity (SSIM), so you can focus on the variants that actually look convincing.
+d0ma1n takes a domain name, generates every visually confusable variant across 12 Unicode scripts, and checks which ones are already registered. Each substitution is scored by vector-outline raycasting across 245 fonts, so you can focus on the variants that actually look convincing.
+
+By default, d0ma1n uses IDN-aware "realistic" mode: it only generates variants that browsers would actually display as Unicode (same-script substitutions and full single-script replacements). Mixed-script variants that browsers display as punycode are excluded because no user would be fooled by them.
 
 ```
 $ d0ma1n scan paypal.com --resolve
@@ -34,8 +36,9 @@ This works in every direction. Scan a Cyrillic domain and d0ma1n finds Latin and
 
 ## Key features
 
-- **1,397 SSIM-scored confusable pairs** across 12 ICANN-approved IDN scripts, not a static homoglyph list
-- **Font-aware scoring** finds the worst-case font for each substitution (74 fonts with high-risk pairs)
+- **4,174 RaySpace-scored confusable pairs** across 12 ICANN-approved IDN scripts, not a static homoglyph list
+- **IDN-aware filtering** only generates variants browsers display as Unicode (realistic mode, on by default)
+- **Font-aware scoring** finds the worst-case font for each substitution (245 fonts)
 - **DNS resolution** with A, AAAA, MX, and NS records
 - **MX threat flagging** for domains that can receive email
 - **Reverse lookup** to find what a suspicious domain is impersonating
@@ -110,7 +113,8 @@ d0ma1n scan yourcompany.com --resolve --csv > report.csv
 | `--threshold <n>` | Minimum similarity score (0 to 1) | `0` |
 | `--max-edits <n>` | Maximum simultaneous substitutions | `2` |
 | `--font <name>` | Use font-specific weights | |
-| `--use-max-danger` | Score with max SSIM instead of p95 | `false` |
+| `--use-max-danger` | Score with max danger instead of p95 | `false` |
+| `--script-mode <mode>` | `realistic` (IDN-aware) or `all` (no filtering) | `realistic` |
 | `--include-non-pvalid` | Include non-IDNA characters | `false` |
 | `--tlds <list>` | TLDs to check (comma-separated) | `com,net,org,io` |
 
@@ -131,7 +135,7 @@ const result = await scan("paypal.com", {
 //   dangerScore: 0.90,
 //   substitutions: [{ position: 1, original: "a", replacement: "а", script: "Cyrillic" }],
 //   bestFont: "Arial",
-//   bestFontSsim: 0.9007,
+//   bestFontScore: 0.9007,
 //   punycode: "xn--pypal-4ve.com",
 //   dns: { registered: true, hasMx: true, threatLevel: "active" }
 // }
@@ -154,7 +158,7 @@ npx wrangler dev
 
 Three open-source projects work together:
 
-1. **[confusable-vision](https://github.com/paultendo/confusable-vision)** renders 230 system fonts and computes SSIM similarity for Unicode character pairs. This produces the scored confusable maps.
+1. **[confusable-vision](https://github.com/paultendo/confusable-vision)** casts rays through 245 system font outlines and measures structural similarity for Unicode character pairs. This produces the scored confusable maps.
 
 2. **[namespace-guard](https://github.com/paultendo/namespace-guard)** ships the maps as runtime data and provides `skeleton()`, `areConfusable()`, and cross-script detection.
 

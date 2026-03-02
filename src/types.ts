@@ -12,7 +12,7 @@ export type Substitution = {
   codepoint: string;
   /** Unicode script name (e.g. "Cyrillic"). */
   script: string;
-  /** SSIM danger score for this pair. */
+  /** Danger score for this pair (max visual similarity across fonts). */
   danger: number;
   /** Stable (p95) danger score for this pair. */
   stableDanger: number;
@@ -42,10 +42,12 @@ export type DomainVariant = {
   editCount: number;
   /** Details of each substitution. */
   substitutions: Substitution[];
-  /** Font where this variant scores highest SSIM. */
+  /** Font where this variant scores highest visual similarity. */
   bestFont?: string;
-  /** Highest font-specific SSIM for this variant. */
-  bestFontSsim?: number;
+  /** Highest font-specific visual similarity score for this variant. */
+  bestFontScore?: number;
+  /** True if this is a full single-script replacement of the entire label. */
+  fullReplacement?: boolean;
   /** Punycode (ACE) form of the domain. */
   punycode: string;
   /** DNS resolution data (only when --resolve is used). */
@@ -60,12 +62,14 @@ export type ConfusableSubstitute = {
   codepoint: string;
   /** Unicode script name. */
   script: string;
-  /** Max SSIM danger score. */
+  /** Max danger score (visual similarity across fonts). */
   danger: number;
-  /** p95 SSIM stable danger score. */
+  /** p95 stable danger score. */
   stableDanger: number;
   /** Whether this char is IDNA PVALID. */
   idnaPvalid: boolean;
+  /** Whether this substitute is from a different script than the prototype. */
+  crossScript?: boolean;
 };
 
 /** Reverse map: ASCII prototype to its confusable substitutes, sorted by danger. */
@@ -81,13 +85,18 @@ export type GenerateOptions = {
   maxVariants?: number;
   /** Include non-IDNA PVALID characters (default: false). */
   includeNonPvalid?: boolean;
-  /** Use max SSIM instead of p95 for scoring (default: false). */
+  /** Use max danger instead of p95 for scoring (default: false). */
   useMaxDanger?: boolean;
+  /** Script filtering mode for IDN-aware generation.
+   *  - 'realistic': only same-script subs + whole-script replacement (default)
+   *  - 'all': no script filtering (legacy behavior)
+   */
+  scriptMode?: 'realistic' | 'all';
 };
 
 /** Options for scoring. */
 export type ScoreOptions = {
-  /** Use max SSIM instead of p95 for scoring. */
+  /** Use max danger instead of p95 for scoring. */
   useMaxDanger?: boolean;
   /** Font name for font-specific scoring. */
   font?: string;

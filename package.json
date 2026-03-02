@@ -1,7 +1,7 @@
 {
   "name": "d0ma1n",
   "version": "0.1.0",
-  "description": "Domain & brand name spoofing scanner powered by SSIM-scored confusable maps",
+  "description": "Domain & brand name spoofing scanner powered by visually-scored confusable maps",
   "type": "module",
   "bin": {
     "d0ma1n": "dist/cli.js"
@@ -24,7 +24,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "namespace-guard": "^0.19.0"
+    "namespace-guard": "^0.19.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

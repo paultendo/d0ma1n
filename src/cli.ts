@@ -26,8 +26,9 @@ Options:
   --max-per-char <n>     Max substitutes per position (default: 10)
   --max-variants <n>     Hard cap on generated variants (default: 5000)
   --font <name>          Use font-specific weights
-  --use-max-danger       Score with max SSIM instead of p95
+  --use-max-danger       Score with max danger instead of p95
   --include-non-pvalid   Include non-IDNA chars
+  --script-mode <mode>   Script filtering: realistic (default) or all
   --tlds <list>          TLDs to check, comma-separated (default: com)
   --tld-variants         Also generate confusable TLD substitutions
   --concurrency <n>      Max parallel DNS lookups (default: 10)
@@ -98,6 +99,12 @@ function buildScanOptions(
   if (options.concurrency)
     scanOpts.concurrency = Number(options.concurrency);
   if (options.timeout) scanOpts.timeout = Number(options.timeout);
+  if (options["script-mode"]) {
+    const mode = String(options["script-mode"]);
+    if (mode === "realistic" || mode === "all") {
+      scanOpts.scriptMode = mode;
+    }
+  }
 
   return scanOpts;
 }

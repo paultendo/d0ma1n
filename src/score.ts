@@ -24,11 +24,13 @@ const WEB_SAFE_FONTS = new Set([
  * Compute the composite danger score for a variant.
  *
  * Formula: product(stableDanger_i) * (1 - 0.1 * (editCount - 1))
+ * Full single-script replacements skip the multi-edit penalty (they are the
+ * most dangerous attack vector: the entire label is a single non-Latin script).
  * Mixed-script penalty: -0.1 (browsers show punycode for mixed scripts)
  */
 export function computeDangerScore(
   substitutions: Substitution[],
-  options?: ScoreOptions
+  options?: ScoreOptions & { fullReplacement?: boolean }
 ): number {
   if (substitutions.length === 0) return 0;
 
@@ -40,9 +42,16 @@ export function computeDangerScore(
     product *= sub[scoreKey];
   }
 
-  // Multi-edit penalty
-  const editPenalty = 1 - 0.1 * (substitutions.length - 1);
-  let score = product * editPenalty;
+  // Full single-script replacements skip the multi-edit penalty.
+  // The entire label is replaced with a single script, making it
+  // the most deceptive variant (browsers display it as Unicode).
+  let score: number;
+  if (options?.fullReplacement) {
+    score = product;
+  } else {
+    const editPenalty = 1 - 0.1 * (substitutions.length - 1);
+    score = product * editPenalty;
+  }
 
   // Mixed-script penalty: if substitutions use different scripts, penalty
   const scripts = new Set(substitutions.map((s) => s.script));
@@ -54,16 +63,16 @@ export function computeDangerScore(
 }
 
 /**
- * Find the font where this variant's substitution scores highest SSIM.
- * Returns the best font name and its SSIM score, or undefined if no
+ * Find the font where this variant's substitution scores highest.
+ * Returns the best font name and its score, or undefined if no
  * font-specific data is available.
  */
 export function findBestFont(
   substitutions: Substitution[]
-): { font: string; ssim: number } | undefined {
+): { font: string; score: number } | undefined {
   const fontWeights = FONT_SPECIFIC_WEIGHTS as Record<string, ConfusableWeights>;
   let bestFont: string | undefined;
-  let bestSsim = 0;
+  let bestScore = 0;
 
   for (const [fontName, weights] of Object.entries(fontWeights)) {
     let fontProduct = 1;
@@ -85,14 +94,14 @@ export function findBestFont(
       }
     }
 
-    if (allFound && fontProduct > bestSsim) {
-      bestSsim = fontProduct;
+    if (allFound && fontProduct > bestScore) {
+      bestScore = fontProduct;
       bestFont = fontName;
     }
   }
 
   if (bestFont) {
-    return { font: bestFont, ssim: bestSsim };
+    return { font: bestFont, score: bestScore };
   }
   return undefined;
 }
@@ -121,11 +130,14 @@ export function scoreVariants(
 ): DomainVariant[] {
   return rawVariants.map((raw) => {
     const domain = `${raw.label}.${tld}`;
-    const dangerScore = computeDangerScore(raw.substitutions, options);
+    const dangerScore = computeDangerScore(raw.substitutions, {
+      ...options,
+      fullReplacement: raw.fullReplacement,
+    });
 
     // Find best font for display
     let bestFont: string | undefined;
-    let bestFontSsim: number | undefined;
+    let bestFontScore: number | undefined;
 
     if (options?.font) {
       // Use specific font if requested
@@ -146,7 +158,7 @@ export function scoreVariants(
         }
         if (allFound) {
           bestFont = options.font;
-          bestFontSsim = product;
+          bestFontScore = product;
         }
       }
     } else {
@@ -154,7 +166,7 @@ export function scoreVariants(
       const best = findBestFont(raw.substitutions);
       if (best) {
         bestFont = best.font;
-        bestFontSsim = best.ssim;
+        bestFontScore = best.score;
       }
     }
 
@@ -163,8 +175,9 @@ export function scoreVariants(
       dangerScore,
       editCount: raw.substitutions.length,
       substitutions: raw.substitutions,
+      ...(raw.fullReplacement ? { fullReplacement: true } : {}),
       bestFont,
-      bestFontSsim,
+      bestFontScore,
       punycode: toPunycode(domain),
     };
   });

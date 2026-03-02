@@ -34,6 +34,7 @@ export async function scan(
       maxVariants: options?.maxVariants,
       includeNonPvalid: options?.includeNonPvalid,
       useMaxDanger: options?.useMaxDanger,
+      scriptMode: options?.scriptMode,
     },
     buckets
   );

@@ -52,7 +52,7 @@ export function toCodepoint(ch: string): string {
  *
  * Sources:
  * 1. CONFUSABLE_MAP_FULL: TR39 confusable mappings (char -> prototype)
- * 2. CONFUSABLE_WEIGHTS: 1,397 SSIM-scored pairs including 317 cross-script
+ * 2. CONFUSABLE_WEIGHTS: 4,174 RaySpace-scored pairs including cross-script
  *    non-ASCII pairs (Hangul/Han, Cyrillic/Greek, Thai/Devanagari, etc.)
  */
 export function buildPrototypeBuckets(options?: {
@@ -93,13 +93,20 @@ export function buildPrototypeBuckets(options?: {
       return;
     }
 
+    const subScript = getScript(sub);
+    const fromScript = getScript(from);
+
     raw[from].set(sub, {
       char: sub,
       codepoint: toCodepoint(sub),
-      script: getScript(sub),
+      script: subScript,
       danger,
       stableDanger,
       idnaPvalid,
+      // Cross-script if scripts differ, unless BOTH are Common.
+      // Common-to-specific (e.g. digit "1" -> Cyrillic "І") IS cross-script
+      // because it would create a mixed-script label.
+      crossScript: subScript !== fromScript && !(fromScript === "Common" && subScript === "Common"),
     });
   };
 
@@ -108,7 +115,7 @@ export function buildPrototypeBuckets(options?: {
   for (const [char, prototype] of Object.entries(CONFUSABLE_MAP_FULL)) {
     if (char === prototype) continue;
 
-    // Look up SSIM weight if available (bidirectional lookup, matching lookupWeight pattern)
+    // Look up visual weight if available (bidirectional lookup, matching lookupWeight pattern)
     const weights = CONFUSABLE_WEIGHTS as ConfusableWeights;
     const w =
       weights[char]?.[prototype] ??
@@ -126,7 +133,7 @@ export function buildPrototypeBuckets(options?: {
     addEdge(char, prototype, danger, stableDanger, idnaPvalid);
   }
 
-  // 2. CONFUSABLE_WEIGHTS: all SSIM-scored pairs, including cross-script.
+  // 2. CONFUSABLE_WEIGHTS: all visually-scored pairs, including cross-script.
   //    Every edge is bidirectional. This captures:
   //    - ASCII <-> non-ASCII (Latin a <-> Cyrillic а)
   //    - Non-ASCII <-> non-ASCII (Hangul ᅵ <-> Han 丨, Greek α <-> Cyrillic а)

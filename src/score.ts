@@ -10,6 +10,7 @@ import type { RawVariant } from "./generate.js";
 import type { DomainRegistryProfileName } from "./policy/index.js";
 import type { DomainVariant, DomainVariantPolicy, Substitution, ScoreOptions } from "./types.js";
 import { getScript } from "./reverse-map.js";
+import { registryRule } from "./policy/repertoire.js";
 
 /** Web-safe fonts that can be rendered via CSS font-family directly. */
 const WEB_SAFE_FONTS = new Set([
@@ -159,6 +160,7 @@ export function evaluateVariantPolicy(
     score: assessment.score,
     displayMode: assessment.displayMode,
     registrable: assessment.registrable,
+    registryRules: registryRule(tld).kind,
     ...(assessment.registered === undefined ? {} : { registered: assessment.registered }),
     surfaces: assessment.surfaces,
     spoof: assessment.spoof,

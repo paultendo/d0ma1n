@@ -8,9 +8,9 @@ export function renderLandingPage(): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>d0ma1n - Brand protection from lookalike domains</title>
-  <meta name="description" content="Protect your brand from lookalike domain attacks. 4,174 visually-scored confusable pairs across 12 scripts and 245 fonts.">
+  <meta name="description" content="Protect your brand from lookalike domain attacks. Lookalike characters measured across fonts, checked against every TLD's registry rules.">
   <meta property="og:title" content="d0ma1n - Brand protection from lookalike domains">
-  <meta property="og:description" content="Protect your brand from lookalike domain attacks. 4,174 visually-scored pairs, 12 scripts, font-aware scoring.">
+  <meta property="og:description" content="Protect your brand from lookalike domain attacks. Measured lookalike characters, checked against every TLD's registry rules.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://d0ma1n.app">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -298,6 +298,36 @@ const STYLES = `<style>
     color: var(--text-dim);
     margin-top: 2px;
   }
+  mark.diff {
+    background: rgba(245, 158, 11, 0.18);
+    color: inherit;
+    border-bottom: 2px solid var(--danger-mid);
+    border-radius: 2px;
+  }
+  .swaps {
+    margin-top: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  .swap {
+    font-family: var(--font-mono);
+    font-variant-ligatures: none;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    padding: 0 0.3rem;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+  }
+  .swap-note {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    opacity: 0.8;
+    margin-top: 2px;
+  }
+  .swap-cp {
+    opacity: 0.7;
+  }
 
   .danger-badge {
     display: inline-block;
@@ -326,6 +356,35 @@ const STYLES = `<style>
     color: var(--danger-mid);
     font-size: 0.8rem;
   }
+  .threat-open {
+    color: var(--text);
+    font-size: 0.8rem;
+  }
+  .explainer {
+    margin-top: 0.75rem;
+    max-width: 46rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--text-dim);
+  }
+  .legend {
+    margin-top: 1.75rem;
+    max-width: 46rem;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: var(--text-dim);
+  }
+  .legend strong { color: var(--text); font-weight: 600; }
+  .results-table td > .punycode {
+    margin-top: 4px;
+    font-size: 0.7rem;
+    opacity: 0.75;
+  }
+  .results-table .font-label {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.7rem;
+  }
   .threat-none {
     color: var(--text-dim);
     font-size: 0.8rem;
@@ -344,6 +403,7 @@ const STYLES = `<style>
 
   .punycode {
     font-family: var(--font-mono);
+    font-variant-ligatures: none;
     font-size: 0.75rem;
     color: var(--text-dim);
   }
@@ -543,8 +603,8 @@ const STYLES = `<style>
     }
     .scan-form button { border-radius: 0 0 8px 8px; }
     .results-table { font-size: 0.8rem; }
-    .results-table th:nth-child(n+5),
-    .results-table td:nth-child(n+5) { display: none; }
+    .results-table th:nth-child(3),
+    .results-table td:nth-child(3) { display: none; }
     .pipeline { flex-direction: column; }
     .pipeline-arrow { justify-content: center; transform: rotate(90deg); }
   }
@@ -566,8 +626,8 @@ const RESULTS_CONTAINER = `<div id="results"></div>`;
 
 const SCRIPTS_SECTION = `
 <section class="section">
-  <h2 class="section-title">12 ICANN scripts</h2>
-  <p class="section-subtitle">Spoofing isn't limited to Latin. d0ma1n scans across all 12 ICANN-approved IDN scripts.</p>
+  <h2 class="section-title">Lookalikes from 12 scripts</h2>
+  <p class="section-subtitle">The letter that fakes your domain doesn&rsquo;t have to be Latin. Lookalikes are measured across these twelve writing systems, and d0ma1n checks which of them a registry would actually accept.</p>
   <div class="scripts-grid">
     <div class="script-card"><div class="script-native">Latin</div><div class="script-name">Latin</div></div>
     <div class="script-card"><div class="script-native">&#x41a;&#x438;&#x440;&#x438;&#x43b;&#x43b;&#x438;&#x446;&#x430;</div><div class="script-name">Cyrillic</div></div>
@@ -589,16 +649,16 @@ const FEATURES_SECTION = `
   <h2 class="section-title">What makes d0ma1n different</h2>
   <div class="features-grid">
     <div class="feature-card">
-      <h3>4,174 scored pairs</h3>
-      <p>Not a static homoglyph table. Every confusable pair is scored by vector-outline raycasting across 245 fonts, with distributional metrics. Thousands of pairs are novel discoveries beyond TR39.</p>
+      <h3>Measured, not listed</h3>
+      <p>Not a static homoglyph table. confusable-vision release 2 measures 857 lookalike pairs at the size and baseline glyphs have in running text, across every macOS system font and Roboto, calibrated against pairs with known answers. 78 are proposed as additions to Unicode&rsquo;s confusables list.</p>
     </div>
     <div class="feature-card">
-      <h3>12 scripts</h3>
-      <p>Latin, Cyrillic, Greek, Arabic, Han, Hangul, Katakana, Hiragana, Devanagari, Thai, Georgian, Armenian. Most tools only check Latin lookalikes.</p>
+      <h3>Registry-aware</h3>
+      <p>A lookalike only matters if someone can register it. Each one is checked against what its TLD&rsquo;s registry accepts, for every delegated TLD, so you see which are real openings and which are blocked.</p>
     </div>
     <div class="feature-card">
       <h3>Font-aware</h3>
-      <p>Visual similarity depends on the font. A substitution that is invisible in Arial may be obvious in Georgia. d0ma1n finds the worst-case font for each variant.</p>
+      <p>Visual similarity depends on the font. A substitution that is invisible in Arial may be obvious in Georgia. d0ma1n shows each lookalike in the font where it is most convincing.</p>
     </div>
   </div>
 </section>`;
@@ -612,12 +672,13 @@ const COMPARISON_SECTION = `
       <tr><th>Capability</th><th></th></tr>
     </thead>
     <tbody>
-      <tr><td>Confusable pairs</td><td>4,174 RaySpace-scored (thousands novel, beyond TR39)</td></tr>
-      <tr><td>Scripts</td><td>12 ICANN-approved IDN scripts, bidirectional</td></tr>
-      <tr><td>Scoring</td><td>Continuous 0 to 1 (p95 and max visual similarity)</td></tr>
-      <tr><td>Font awareness</td><td>Best-font lookup across 245 fonts</td></tr>
+      <tr><td>Lookalike pairs</td><td>857 measured (confusable-vision release 2), 78 proposed to Unicode</td></tr>
+      <tr><td>Scripts</td><td>Lookalikes of Latin-letter domains, drawn from 12 measured scripts</td></tr>
+      <tr><td>Scoring</td><td>0 to 1: the share of text fonts where the lookalike holds</td></tr>
+      <tr><td>Font awareness</td><td>Most convincing font for each lookalike</td></tr>
       <tr><td>DNS resolution</td><td>A, AAAA, MX, NS with threat classification</td></tr>
       <tr><td>IDNA filtering</td><td>Only PVALID characters (registrable domains)</td></tr>
+      <tr><td>Registry rules</td><td>Every delegated TLD: IANA tables, ICANN rules and country-code registry policies</td></tr>
       <tr><td>Reverse lookup</td><td>Identify what a suspicious domain impersonates</td></tr>
       <tr><td>Runtime dependencies</td><td>1 (namespace-guard)</td></tr>
     </tbody>
@@ -631,7 +692,7 @@ const HOW_IT_WORKS = `
   <div class="pipeline">
     <div class="pipeline-step">
       <h4>confusable-vision</h4>
-      <p>Casts rays through 245 font outlines, measures structural similarity for every Unicode pair. Produces scored confusable maps.</p>
+      <p>Casts rays through glyph outlines in every macOS system font and Roboto, and measures which characters look alike at the size they have in running text.</p>
     </div>
     <div class="pipeline-arrow">&rarr;</div>
     <div class="pipeline-step">
@@ -641,7 +702,7 @@ const HOW_IT_WORKS = `
     <div class="pipeline-arrow">&rarr;</div>
     <div class="pipeline-step">
       <h4>d0ma1n</h4>
-      <p>Inverts the maps, generates domain variants via k-edit enumeration, scores them, resolves DNS.</p>
+      <p>Generates lookalikes of your domain, checks each against its registry&rsquo;s rules, scores them and resolves DNS.</p>
     </div>
   </div>
 </section>`;
@@ -649,7 +710,7 @@ const HOW_IT_WORKS = `
 const OPEN_SOURCE = `
 <section class="section">
   <h2 class="section-title">Open source</h2>
-  <p class="section-subtitle">Built in the open. MIT licensed.</p>
+  <p class="section-subtitle">Built in the open. Code MIT licensed; lookalike data CC-BY-4.0.</p>
   <div class="oss-links">
     <a href="https://github.com/paultendo/d0ma1n" class="oss-link">d0ma1n on GitHub</a>
     <a href="https://www.npmjs.com/package/namespace-guard" class="oss-link">namespace-guard on npm</a>
@@ -700,23 +761,28 @@ async function doScan() {
 }
 
 function renderResults(data, container) {
+  const byDanger = (a, b) => b.dangerScore - a.dangerScore;
   const active = data.variants.filter(v => v.dns && v.dns.threatLevel === 'active');
-  const registered = data.variants.filter(v => v.dns && v.dns.registered);
+  const registered = data.variants.filter(v => v.dns && v.dns.registered).sort(byDanger);
   const unregistered = data.variants.filter(v => !v.dns || !v.dns.registered);
+  // The registry's own rules (IDN tables, single-script policy) decide whether an unregistered lookalike can be bought at all
+  const available = unregistered.filter(v => !v.policy || v.policy.registrable).sort(byDanger);
+  const blocked = unregistered.filter(v => v.policy && !v.policy.registrable).sort(byDanger);
+  const tld = data.original.slice(data.original.indexOf('.'));
 
   let html = '';
 
-  // Threat summary
   html += '<div style="margin-bottom:1.5rem">';
   html += '<h2 style="font-size:1.25rem;margin-bottom:0.5rem">Threat report for ' + escHtml(data.original) + '</h2>';
-  html += '<div class="results-meta">' + data.totalGenerated + ' confusable variants analysed';
-  if (registered.length > 0) {
-    html += ' &middot; <strong style="color:var(--danger-high)">' + registered.length + ' registered</strong>';
-  }
-  if (active.length > 0) {
-    html += ' &middot; <strong style="color:var(--active-threat)">' + active.length + ' with mail servers</strong>';
-  }
-  html += '</div></div>';
+  const counts = [data.variants.length + ' lookalike' + (data.variants.length === 1 ? '' : 's') + ' found'];
+  if (registered.length > 0) counts.push('<strong style="color:var(--danger-high)">' + registered.length + ' already registered</strong>');
+  if (active.length > 0) counts.push('<strong style="color:var(--active-threat)">' + active.length + ' with mail servers</strong>');
+  counts.push(available.length + ' could be registered');
+  if (blocked.length > 0) counts.push(blocked.length + ' blocked by registry rules');
+  html += '<div class="results-meta">' + counts.join(' &middot; ') + '</div>';
+  html += '<p class="explainer">Each lookalike swaps a letter of your domain for a different Unicode character that looks almost the same. ';
+  html += 'The swapped letter is <mark class="diff">highlighted</mark>, with your real domain underneath for comparison.</p>';
+  html += '</div>';
 
   if (active.length > 0) {
     html += '<div class="alert-banner">';
@@ -726,62 +792,109 @@ function renderResults(data, container) {
     html += '</div>';
   }
 
-  // Registered threats first
   if (registered.length > 0) {
-    html += '<h3 style="font-size:1rem;margin:1.5rem 0 0.75rem;color:var(--danger-high)">Registered domains requiring attention</h3>';
-    html += renderVariantTable(registered, data.original, true);
+    html += section('Already registered (' + registered.length + ')', 'var(--danger-high)',
+      'Someone owns these. Check what they point to.');
+    html += renderVariantTable(registered, data.original);
   }
 
-  // Then unregistered risks
-  if (unregistered.length > 0) {
-    html += '<h3 style="font-size:1rem;margin:1.5rem 0 0.75rem;color:var(--text-dim)">Unregistered variants (' + unregistered.length + ')</h3>';
-    html += renderVariantTable(unregistered, data.original, false);
+  if (available.length > 0) {
+    html += section('Could be registered (' + available.length + ')', 'var(--text)',
+      'Nobody owns these yet, and the registry would accept them. Consider registering the most convincing ones yourself, or monitoring them.');
+    html += renderVariantTable(available, data.original);
+  } else if (data.variants.length > 0) {
+    html += section('Could be registered (0)', 'var(--text)',
+      'None of the lookalikes found can be registered under ' + escHtml(tld) + ' today.');
   }
 
-  html += '<div style="margin-top:1.5rem;display:flex;gap:0.75rem;align-items:center">';
+  if (blocked.length > 0) {
+    html += section('Can&rsquo;t be registered (' + blocked.length + ')', 'var(--text-dim)',
+      'The ' + escHtml(tld) + ' registry does not accept these characters, so nobody can register them. Listed for completeness.');
+    html += renderVariantTable(blocked, data.original);
+  }
+
+  html += '<p class="legend"><strong>Similarity</strong>: how alike the lookalike and the real domain look, in the font where they are closest (named under the percentage). ';
+  html += '<strong>Swapped in</strong>: where the replacement character comes from in Unicode, as its script and block. None of them is the ordinary letter it imitates, even when the script is Latin. ';
+  html += 'The <span class="punycode">xn--</span> form under each lookalike is how it is actually registered and how it appears in DNS, certificates and blocklists.</p>';
+
+  html += '<div style="margin-top:1rem;display:flex;gap:0.75rem;align-items:center">';
   html += '<a href="/api/scan?domain=' + encodeURIComponent(data.original) + '&top=50" download="' + data.original + '-threat-report.json" style="color:var(--accent-bright);font-size:0.85rem">Download threat report (JSON)</a>';
   html += '</div>';
 
   container.innerHTML = html;
 }
 
-function renderVariantTable(variants, original, showPunycode) {
+function section(title, color, blurb) {
+  return '<h3 style="font-size:1rem;margin:1.75rem 0 0.25rem;color:' + color + '">' + title + '</h3>' +
+    '<div class="results-meta" style="margin-bottom:0.75rem">' + blurb + '</div>';
+}
+
+// Script alone misleads ("Latin" reads as ordinary letters); the Unicode block says what kind of character it is
+function charKind(s) {
+  if (!s.block) return s.script;
+  return s.block.startsWith(s.script) ? s.block : s.script + ' · ' + s.block;
+}
+
+// Why the registry refuses a lookalike, from the policy engine's notes
+function refusal(v) {
+  return v.policy.notes.find(n => n.startsWith('Not in the') || n.endsWith('ASCII names only.') ||
+    n.startsWith('Scripts outside') || n.startsWith('Profile assumes')) || '';
+}
+
+function renderVariantTable(variants, original) {
   let html = '<table class="results-table"><thead><tr>';
-  html += '<th>Variant</th><th>Similarity</th><th>Script</th><th>Status</th>';
-  if (showPunycode) html += '<th>Punycode</th>';
-  html += '<th>Worst-case font</th>';
+  html += '<th>Lookalike</th><th>Similarity</th><th>Swapped in</th><th>Status</th>';
   html += '</tr></thead><tbody>';
 
   for (const v of variants) {
     const dangerPct = Math.round(v.dangerScore * 100);
     const dangerClass = dangerPct >= 80 ? 'danger-high' : dangerPct >= 50 ? 'danger-mid' : 'danger-low';
-    const scripts = [...new Set(v.substitutions.map(s => s.script))];
+    const kinds = [...new Set(v.substitutions.map(charKind))];
     const fontStyle = v.bestFont ? ' style="font-family: \\'' + escHtml(v.bestFont) + '\\', var(--font-mono)"' : '';
+    const isRegistered = v.dns && v.dns.registered;
 
-    let status = '<span class="threat-none">---</span>';
-    if (v.dns) {
-      if (v.dns.threatLevel === 'active') {
-        status = '<span class="threat-active">Active threat</span>';
-      } else if (v.dns.threatLevel === 'parked') {
-        status = '<span class="threat-parked">Registered</span>';
-      } else {
-        status = '<span class="threat-none">Not registered</span>';
+    let status;
+    if (v.dns && v.dns.threatLevel === 'active') {
+      status = '<span class="threat-active">Active threat</span><div class="swap-note">Has mail servers</div>';
+    } else if (isRegistered) {
+      status = '<span class="threat-parked">Registered</span>';
+    } else if (v.policy && !v.policy.registrable) {
+      status = '<span class="threat-none">Can&rsquo;t be registered</span><div class="swap-note">' + escHtml(refusal(v)) + '</div>';
+    } else {
+      status = '<span class="threat-open">' + (v.dns ? 'Available' : 'Not checked') + '</span>';
+      if (v.policy && v.policy.registryRules === 'unknown') {
+        status += '<div class="swap-note">This registry&rsquo;s character rules are unknown; judged by script only.</div>';
       }
     }
 
+    const swaps = [...new Set(v.substitutions.map(s =>
+      '<span class="swap" title="' + escHtml(charKind(s)) + ' character ' + escHtml(s.codepoint) + '">' + escHtml(s.original) +
+      ' &rarr; ' + escHtml(s.replacement) + ' <span class="swap-cp">' + escHtml(s.codepoint) + '</span></span>'
+    ))];
+
     html += '<tr>';
-    html += '<td><div class="domain-cell"' + fontStyle + '>' + escHtml(v.domain) + '</div>';
-    html += '<div class="domain-original"' + fontStyle + '>' + escHtml(original) + '</div></td>';
-    html += '<td><span class="danger-badge ' + dangerClass + '">' + dangerPct + '%</span></td>';
-    html += '<td>' + scripts.map(s => '<span class="script-tag">' + escHtml(s) + '</span>').join('') + '</td>';
+    html += '<td><div class="domain-cell"' + fontStyle + '>' + markDiff(v.domain, original) + '</div>';
+    html += '<div class="domain-original"' + fontStyle + '>' + markDiff(original, v.domain) + '</div>';
+    html += '<div class="swaps">' + swaps.join('') + '</div>';
+    html += '<div class="punycode">' + escHtml(v.punycode) + '</div></td>';
+    html += '<td><span class="danger-badge ' + dangerClass + '">' + dangerPct + '%</span>';
+    if (v.bestFont) html += '<div class="font-label">in ' + escHtml(v.bestFont) + '</div>';
+    html += '</td>';
+    html += '<td>' + kinds.map(k => '<span class="script-tag">' + escHtml(k) + '</span>').join('') + '</td>';
     html += '<td>' + status + '</td>';
-    if (showPunycode) html += '<td><span class="punycode">' + escHtml(v.punycode) + '</span></td>';
-    html += '<td><span class="font-label">' + escHtml(v.bestFont || '') + '</span></td>';
     html += '</tr>';
   }
 
   html += '</tbody></table>';
   return html;
+}
+
+// Wrap each character of a that differs from b at the same position, so swapped look-alikes are visible.
+function markDiff(a, b) {
+  const ac = Array.from(a);
+  const bc = Array.from(b);
+  if (ac.length !== bc.length) return escHtml(a);
+  return ac.map((c, i) => c === bc[i] ? escHtml(c) : '<mark class="diff">' + escHtml(c) + '</mark>').join('');
 }
 
 function escHtml(s) {

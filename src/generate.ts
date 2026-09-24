@@ -1,4 +1,4 @@
-import { buildPrototypeBuckets } from "./reverse-map.js";
+import { buildPrototypeBuckets, getBlock } from "./reverse-map.js";
 import type {
   GenerateOptions,
   PrototypeBuckets,
@@ -236,6 +236,7 @@ function makeSubstitution(
     replacement: sub.char,
     codepoint: sub.codepoint,
     script: sub.script,
+    block: getBlock(sub.char),
     danger: sub.danger,
     stableDanger: sub.stableDanger,
     idnaPvalid: sub.idnaPvalid,

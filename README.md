@@ -11,7 +11,7 @@ Try it online at [d0ma1n.app](https://d0ma1n.app) (still going live, use [d0ma1n
 
 d0ma1n takes a domain name, generates its visually confusable variants, and checks which ones are already registered. Each substitution is weighted by confusable-vision's measurements (release 2026.09.24): the share of text fonts in which the two characters look alike at the same size and on the same baseline, within one font or across fonts.
 
-By default, d0ma1n uses IDN-aware "realistic" mode: substitutions within a script, and labels written wholly in one other script. Each variant is checked against what the registry actually accepts, from the IANA tables for ten TLDs, and a label IDNA would refuse or change is never reported. Mixed-script labels, which most registries refuse and browsers show as punycode, are only reported when they turn out to be registered already.
+By default, d0ma1n uses IDN-aware "realistic" mode: substitutions within a script, and labels written wholly in one other script. Each variant is checked against what the TLD's registry actually accepts (see [Registry rules](#registry-rules)), and a label IDNA would refuse or change is never reported. Mixed-script labels, which most registries refuse and browsers show as punycode, are only reported when they turn out to be registered already.
 
 It also applies a policy layer to each candidate variant, so the output is not just "what looks similar" but "what should be blocked, reviewed, warned on, or ignored first". Those policy decisions are resolved from a small set of registry families rather than pretending every TLD needs its own bespoke rule set.
 
@@ -40,7 +40,7 @@ This works in every direction. Scan a Cyrillic domain and d0ma1n finds Latin and
 
 - **Measured confusable pairs** from confusable-vision (372 in namespace-guard 0.21), checked at real size and across fonts
 - **IDN-aware filtering** only generates variants browsers display as Unicode (realistic mode, on by default)
-- **Registry-aware:** each variant is checked against the IANA registry tables for .com, .net, .org, .info, .co, .biz, .xyz, .app, .dev and .jp
+- **Registry-aware:** each variant is checked against the rules of its TLD's registry, for every delegated TLD
 - **Policy-aware triage** via `confusable-policy`, so realistic domain threats rise above operational noise
 - **DNS resolution** with A, AAAA, MX, and NS records
 - **MX threat flagging** for domains that can receive email
@@ -172,7 +172,7 @@ Four open-source projects work together:
 
 4. **d0ma1n** inverts the maps into bidirectional lookup buckets, generates domain variants through k-edit enumeration, scores them, enriches them with policy verdicts, and resolves DNS.
 
-The similarity data covers 12 ICANN-approved IDN scripts: Latin, Cyrillic, Greek, Arabic, Han, Hangul, Katakana, Hiragana, Devanagari, Thai, Georgian, and Armenian. This includes 494 cross-script pairs between non-Latin scripts that traditional homoglyph tables miss entirely.
+The similarity data comes from confusable-vision release 2 (2026-09-24), which compares characters across twelve script sets (Latin, Cyrillic, Greek, Arabic, Han, Hangul, Katakana, Hiragana, Devanagari, Thai, Georgian and Armenian) at the size and baseline position they have in running text. d0ma1n uses it to find lookalikes of Latin-letter domains.
 
 ## Project structure
 
@@ -215,3 +215,15 @@ MIT. See [LICENSE](./LICENSE).
 ## Contact
 
 Built by [Paul Wood FRSA](https://paultendo.github.io) ([@paultendo](https://github.com/paultendo)). Feedback, bug reports, and ideas are welcome via [GitHub issues](https://github.com/paultendo/d0ma1n/issues).
+
+## Registry rules
+
+Whether a lookalike can be registered depends on the TLD. `scripts/build-tld-rules.py` builds `src/policy/repertoire-data.ts` for every delegated TLD from, in order:
+
+1. `data/tld-overrides.json`: hand-checked corrections with sources (for example, .eu takes only Latin; Cyrillic and Greek names go under .ею and .ευ).
+2. The [IANA Repository of IDN Practices](https://www.iana.org/domains/idn-tables): the latest version of every table a registry has lodged. A label must fit one table, because registries take one language or script tag per name.
+3. `data/cctld-idn-rules.json`: country-code registries that have not lodged tables, researched from each registry's own policy, with the source and a confidence level for each. Findings resting only on registrar pages are not used.
+4. A generic TLD with no lodged tables is ASCII-only, since the ICANN registry agreement lets a registry offer IDNs only once its tables are at IANA.
+5. A Latin-named country code whose rules are still unknown is assumed ASCII-only, and results say so. One whose registry says it takes IDNs but publishes no list, and the IDN country codes, are left to the script-level check.
+
+Rebuild with `python3 scripts/build-tld-rules.py <cache-dir> --fetch` (the first fetch downloads about 2.6 GB of tables).

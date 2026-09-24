@@ -18,7 +18,7 @@ const rateLimits = new Map<string, { count: number; resetAt: number }>();
 function checkRateLimit(ip: string, cost: number = 1): boolean {
   const now = Date.now();
   const window = 60_000;
-  const maxRequests = 10;
+  const maxRequests = 30;
 
   let entry = rateLimits.get(ip);
   if (!entry || now > entry.resetAt) {
@@ -117,17 +117,21 @@ async function runScan(
 async function cachedScan(
   kv: KVNamespace,
   domain: string,
-  options: { resolve?: boolean; top?: number; font?: string; threshold?: number; useMaxDanger?: boolean }
-): Promise<ScanResult> {
+  options: { resolve?: boolean; top?: number; font?: string; threshold?: number; useMaxDanger?: boolean },
+  allowFresh: () => boolean,
+): Promise<ScanResult | "rate-limited"> {
   const resolve = options.resolve ?? true;
   const font = options.font ?? "";
-  const cacheKey = `v3:${domain}:${resolve}:${font}`;
+  const cacheKey = `v5:${domain}:${resolve}:${font}`;
 
   // Try KV cache first (free read)
   const cached = await kv.get(cacheKey, "json") as ScanResult | null;
   if (cached) {
     return applyFilters(cached, options.threshold ?? 0, options.top ?? 20);
   }
+
+  // Only a cache miss costs anything, so only a miss counts against the visitor's rate limit
+  if (!allowFresh()) return "rate-limited";
 
   // Cache miss: run with threshold=0, top=200 to maximize cache reuse
   const result = await runScan(domain, {
@@ -220,11 +224,11 @@ export default {
         return htmlResponse(`<p>${input.error}</p>`, 400);
       }
 
-      if (!checkRateLimit(ip, 5)) {
-        return htmlResponse("<p>Rate limit exceeded. Try again in a minute.</p>", 429);
+      const result = await cachedScan(env.SCAN_CACHE, input.domain, { resolve: true, top: 50 },
+        () => checkRateLimit(ip, 5));
+      if (result === "rate-limited") {
+        return htmlResponse("<p>Too many new scans from your connection. Try again in a minute.</p>", 429);
       }
-
-      const result = await cachedScan(env.SCAN_CACHE, input.domain, { resolve: true, top: 50 });
       return htmlResponse(renderScanPage(result));
     }
 
@@ -237,9 +241,6 @@ export default {
 
       const resolve = url.searchParams.get("resolve") !== "false";
       const cost = resolve ? 5 : 1;
-      if (!checkRateLimit(ip, cost)) {
-        return jsonResponse({ error: "Rate limit exceeded" }, 429);
-      }
 
       const top = Math.min(200, parseInt(url.searchParams.get("top") ?? "20", 10));
       const font = url.searchParams.get("font") ?? undefined;
@@ -252,7 +253,10 @@ export default {
         font,
         threshold,
         useMaxDanger,
-      });
+      }, () => checkRateLimit(ip, cost));
+      if (result === "rate-limited") {
+        return jsonResponse({ error: "Too many new scans from your connection. Try again in a minute." }, 429);
+      }
       return jsonResponse(result);
     }
 

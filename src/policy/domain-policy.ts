@@ -6,7 +6,7 @@ import {
 } from "namespace-guard";
 import { CONFUSABLE_WEIGHTS } from "namespace-guard/confusable-weights";
 import { domainToASCII } from "node:url";
-import { outsideRepertoire } from "./repertoire.js";
+import { outsideRepertoire, registryRule } from "./repertoire.js";
 
 import { collectScripts } from "./script.js";
 import { getDefaultBrowserForProfile, getDomainPolicyProfile } from "./profiles.js";
@@ -69,6 +69,15 @@ function isPvalidLike(value: string, weights: ConfusableWeights): boolean {
   return true;
 }
 
+/** Why the registry would refuse a label, for the notes shown with each variant. */
+function registryRefusal(tld: string, missing: string[]): string {
+  const name = `.${tld.replace(/^\./, "")}`;
+  const rule = registryRule(tld);
+  if (rule.kind === "tables") return `Not in the ${name} registry tables: ${[...new Set(missing)].join(" ")}.`;
+  if (rule.kind === "ascii" && rule.assumed) return `The ${name} registry's rules are unchecked; assumed ASCII names only.`;
+  return `The ${name} registry accepts ASCII names only.`;
+}
+
 function isRegistrableUnderProfile(
   normalizedLabel: string,
   scripts: string[],
@@ -80,8 +89,11 @@ function isRegistrableUnderProfile(
   // Where the registry's own tables are known, they decide which characters it accepts
   const missing = tld ? outsideRepertoire(normalizedLabel, tld) : undefined;
   if (missing && missing.length > 0) {
-    notes.push(`Not in the .${tld!.replace(/^\./, "")} registry tables: ${[...new Set(missing)].join(" ")}.`);
+    notes.push(registryRefusal(tld!, missing));
     return { registrable: false, notes };
+  }
+  if (tld && missing === undefined) {
+    notes.push(`The .${tld.replace(/^\./, "")} registry's character rules are unknown; judged by script only.`);
   }
 
   if (scripts.length === 0) {

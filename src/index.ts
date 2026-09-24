@@ -4,7 +4,7 @@ export { reverseScan, fromPunycode } from "./reverse-scan.js";
 export { generateVariants } from "./generate.js";
 export type { RawVariant } from "./generate.js";
 export { scoreVariants, computeDangerScore, findBestFont, toPunycode } from "./score.js";
-export { buildPrototypeBuckets, getDefaultBuckets, getScript, toCodepoint } from "./reverse-map.js";
+export { buildPrototypeBuckets, getBlock, getDefaultBuckets, getScript, toCodepoint } from "./reverse-map.js";
 export { splitDomain, getTargetTlds, generateTldVariants, DEFAULT_TLDS } from "./tld.js";
 export { createNodeResolver } from "./resolve.js";
 

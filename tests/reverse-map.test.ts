@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildPrototypeBuckets,
+  getBlock,
   getScript,
   toCodepoint,
 } from "../src/reverse-map.js";
@@ -101,5 +102,14 @@ describe("buildPrototypeBuckets", () => {
     }
 
     expect(scripts.has("Cyrillic")).toBe(true);
+  });
+});
+
+describe("getBlock", () => {
+  it("names the Unicode block, which says more than the script", () => {
+    expect(getBlock("ᴏ")).toBe("Phonetic Extensions"); // U+1D0F, script Latin
+    expect(getBlock("ɵ")).toBe("IPA Extensions");
+    expect(getBlock("о")).toBe("Cyrillic");
+    expect(getBlock("é")).toBe("Latin-1 Supplement");
   });
 });

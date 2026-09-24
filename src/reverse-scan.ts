@@ -1,7 +1,7 @@
 import { CONFUSABLE_MAP_FULL } from "namespace-guard";
 import { CONFUSABLE_WEIGHTS } from "namespace-guard/confusable-weights";
 import type { ConfusableWeights } from "namespace-guard";
-import { getScript, toCodepoint } from "./reverse-map.js";
+import { getBlock, getScript, toCodepoint } from "./reverse-map.js";
 import { toPunycode } from "./score.js";
 import { splitDomain } from "./tld.js";
 import type { ReverseScanResult, Substitution } from "./types.js";
@@ -132,6 +132,7 @@ export function reverseScan(domain: string): ReverseScanResult {
         replacement: ch,
         codepoint: toCodepoint(ch),
         script: getScript(ch),
+        block: getBlock(ch),
         danger: w?.danger ?? 0.5,
         stableDanger: w?.stableDanger ?? 0.5,
         idnaPvalid: w?.idnaPvalid ?? false,

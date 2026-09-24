@@ -19,6 +19,8 @@ export type Substitution = {
   codepoint: string;
   /** Unicode script name (e.g. "Cyrillic"). */
   script: string;
+  /** Unicode block name (e.g. "Phonetic Extensions"). */
+  block: string;
   /** Danger score for this pair (max visual similarity across fonts). */
   danger: number;
   /** Stable (p95) danger score for this pair. */
@@ -77,6 +79,8 @@ export type DomainVariantPolicy = {
   displayMode: DomainDisplayMode;
   /** Whether the label survives the profile's registrability assumptions. */
   registrable: boolean;
+  /** What registrable rests on: the registry's own character tables, its ASCII-only rule, or (unknown) script alone. */
+  registryRules: "tables" | "ascii" | "unknown";
   /** Set once DNS shows the domain exists. */
   registered?: boolean;
   /** How Chromium, Firefox and phone camera banners would show it. */

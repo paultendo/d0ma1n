@@ -3,6 +3,7 @@ import { CONFUSABLE_WEIGHTS } from "namespace-guard/confusable-weights";
 import type { ConfusableWeights } from "namespace-guard";
 import type { ConfusableSubstitute, PrototypeBuckets } from "./types.js";
 import { domainToASCII } from "node:url";
+import { UNICODE_BLOCKS } from "./blocks-data.js";
 
 /** Unicode script detectors, ordered by frequency in spoofing attacks. */
 const SCRIPT_DETECTORS: [string, RegExp][] = [
@@ -62,6 +63,21 @@ export function idnaStable(ch: string): boolean {
 }
 
 /** Format a codepoint as "U+XXXX". */
+/** The Unicode block a character belongs to (e.g. "Phonetic Extensions"), which says more than its script alone. */
+export function getBlock(ch: string): string {
+  const cp = ch.codePointAt(0) ?? 0;
+  let lo = 0;
+  let hi = UNICODE_BLOCKS.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const [first, last, name] = UNICODE_BLOCKS[mid]!;
+    if (cp < first) hi = mid - 1;
+    else if (cp > last) lo = mid + 1;
+    else return name;
+  }
+  return "No block";
+}
+
 export function toCodepoint(ch: string): string {
   const cp = ch.codePointAt(0);
   if (cp === undefined) return "U+0000";

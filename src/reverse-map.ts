@@ -101,8 +101,8 @@ export function toCodepoint(ch: string): string {
  *
  * Sources:
  * 1. CONFUSABLE_MAP_FULL: TR39 confusable mappings (char -> prototype)
- * 2. CONFUSABLE_WEIGHTS: 4,174 RaySpace-scored pairs including cross-script
- *    non-ASCII pairs (Hangul/Han, Cyrillic/Greek, Thai/Devanagari, etc.)
+ * 2. CONFUSABLE_WEIGHTS: pairs measured by confusable-vision release 2, including pairs between two
+ *    non-ASCII scripts (Hangul/Han, Cyrillic/Greek, Katakana/Hiragana)
  */
 export function buildPrototypeBuckets(options?: {
   includeNonPvalid?: boolean;
@@ -168,11 +168,11 @@ export function buildPrototypeBuckets(options?: {
 
     // Look up visual weight if available (bidirectional lookup, matching lookupWeight pattern)
     const weights = CONFUSABLE_WEIGHTS as ConfusableWeights;
-    const w =
-      weights[char]?.[prototype] ??
-      weights[prototype]?.[char] ??
-      weights[char]?.[prototype.toUpperCase()] ??
-      weights[prototype.toUpperCase()]?.[char];
+    const w = weights[char]?.[prototype] ?? weights[prototype]?.[char];
+    // CONFUSABLE_MAP_FULL lowercases its prototypes, so Lisu ꓖ (TR39: G) arrives as a lookalike of g. When release 2
+    // measured it only against the capital, it imitates the capital, which a lowercase domain never shows: skip it.
+    const upper = prototype.toUpperCase();
+    if (!w && upper !== prototype && (weights[char]?.[upper] ?? weights[upper]?.[char])) continue;
 
     const danger = w?.danger ?? 0.5;
     const stableDanger = w?.stableDanger ?? 0.5;
@@ -192,13 +192,14 @@ export function buildPrototypeBuckets(options?: {
     CONFUSABLE_WEIGHTS as ConfusableWeights
   )) {
     for (const [keyB, weight] of Object.entries(targets)) {
-      const aLower = keyA.toLowerCase();
-      const bLower = keyB.toLowerCase();
-
-      // A -> B: "aLower" can be spoofed by "keyB"
-      addEdge(aLower, keyB, weight.danger, weight.stableDanger, weight.idnaPvalid ?? false);
-      // B -> A: "bLower" can be spoofed by "keyA"
-      addEdge(bLower, keyA, weight.danger, weight.stableDanger, weight.idnaPvalid ?? false);
+      // A domain shows lowercase, so a lookalike of a capital (Lisu ꓖ for G) never sits where g is read: skip it
+      // rather than fold it onto the lowercase letter
+      if (keyA === keyA.toLowerCase()) {
+        addEdge(keyA, keyB, weight.danger, weight.stableDanger, weight.idnaPvalid ?? false);
+      }
+      if (keyB === keyB.toLowerCase()) {
+        addEdge(keyB, keyA, weight.danger, weight.stableDanger, weight.idnaPvalid ?? false);
+      }
     }
   }
 

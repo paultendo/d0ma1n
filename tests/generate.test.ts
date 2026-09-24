@@ -207,3 +207,11 @@ describe("generateVariants (realistic mode)", () => {
     expect(sameScriptEdits.length).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe("capital lookalikes", () => {
+  it("does not offer a lookalike of a capital for a lowercase letter", () => {
+    // Lisu ꓖ imitates G, not g; a domain shows lowercase, so it would read as GOOGLE
+    const labels = generateVariants("google").map((v) => v.label);
+    expect(labels.some((l) => l.includes("ꓖ"))).toBe(false);
+  });
+});

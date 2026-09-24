@@ -63,7 +63,9 @@ let cachedBuckets: ReturnType<typeof buildPrototypeBuckets> | null = null;
 
 function getBuckets() {
   if (!cachedBuckets) {
-    cachedBuckets = buildPrototypeBuckets({ maxPerChar: 10 });
+    // Uncapped: runScan's maxPerChar bounds the k-edit enumeration, while whole-script replacement needs each letter's
+    // substitute in that script even when it ranks below ten others (Cyrillic ӏ for l in раураӏ)
+    cachedBuckets = buildPrototypeBuckets();
   }
   return cachedBuckets;
 }
@@ -122,7 +124,7 @@ async function cachedScan(
 ): Promise<ScanResult | "rate-limited"> {
   const resolve = options.resolve ?? true;
   const font = options.font ?? "";
-  const cacheKey = `v6:${domain}:${resolve}:${font}`;
+  const cacheKey = `v7:${domain}:${resolve}:${font}`;
 
   // Try KV cache first (free read)
   const cached = await kv.get(cacheKey, "json") as ScanResult | null;

@@ -76,3 +76,11 @@ describe("realistic generation", () => {
     }
   });
 });
+
+describe("whole-script replacement", () => {
+  it("is found even when a letter's substitute in that script ranks below maxPerChar", async () => {
+    // Cyrillic ӏ ranks below ten Latin lookalikes of l, but раураӏ still needs it
+    const result = await scan("paypal.com", { maxEdits: 1, maxPerChar: 10, top: 200 });
+    expect(result.variants.some((v) => v.domain === "раураӏ.com")).toBe(true);
+  });
+});

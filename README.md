@@ -218,12 +218,12 @@ Built by [Paul Wood FRSA](https://paultendo.github.io) ([@paultendo](https://git
 
 ## Registry rules
 
-Whether a lookalike can be registered depends on the TLD. `scripts/build-tld-rules.py` builds `src/policy/repertoire-data.ts` for every delegated TLD from, in order:
+Whether a lookalike can be registered depends on the TLD. The rules come from [confusable-vision](https://github.com/paultendo/confusable-vision), which builds them for every delegated TLD (its `scripts/build-tld-rules.py`) so its releases and this scanner judge registrability the same way. In order:
 
-1. `data/tld-overrides.json`: hand-checked corrections with sources (for example, .eu takes only Latin; Cyrillic and Greek names go under .ею and .ευ).
+1. Hand-checked corrections with sources (for example, .eu takes only Latin; Cyrillic and Greek names go under .ею and .ευ).
 2. The [IANA Repository of IDN Practices](https://www.iana.org/domains/idn-tables): the latest version of every table a registry has lodged. A label must fit one table, because registries take one language or script tag per name.
-3. `data/cctld-idn-rules.json`: country-code registries that have not lodged tables, researched from each registry's own policy, with the source and a confidence level for each. Findings resting only on registrar pages are not used.
+3. Country-code registries that have not lodged tables, researched from each registry's own policy, with the source and a confidence level for each. Findings resting only on registrar pages are not used.
 4. A generic TLD with no lodged tables is ASCII-only, since the ICANN registry agreement lets a registry offer IDNs only once its tables are at IANA.
 5. A Latin-named country code whose rules are still unknown is assumed ASCII-only, and results say so. One whose registry says it takes IDNs but publishes no list, and the IDN country codes, are left to the script-level check.
 
-Rebuild with `python3 scripts/build-tld-rules.py <cache-dir> --fetch` (the first fetch downloads about 2.6 GB of tables).
+`node scripts/import-tld-rules.mjs` refreshes `src/policy/repertoire-data.ts` from confusable-vision's `data/input/tld-rules.json`.

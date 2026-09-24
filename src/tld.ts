@@ -14,6 +14,12 @@ export const IDN_TLDS: Record<string, string[]> = {
   Devanagari: ["xn--h2brj9c"], // .भारत
 };
 
+/** The script a script-specific IDN TLD accepts, or undefined for a TLD open to several. */
+export function tldScript(tld: string): string | undefined {
+  for (const [script, tlds] of Object.entries(IDN_TLDS)) if (tlds.includes(tld)) return script;
+  return undefined;
+}
+
 /** Split a domain into label + TLD at the last dot. */
 export function splitDomain(domain: string): { label: string; tld: string } {
   // Handle multi-part TLDs (.co.uk, .com.au)

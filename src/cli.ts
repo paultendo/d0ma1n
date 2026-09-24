@@ -7,6 +7,7 @@ import {
 } from "./format.js";
 import { readFileSync } from "node:fs";
 import type { OutputFormat, ScanOptions } from "./types.js";
+import { isDomainPolicyProfileName, listDomainPolicyProfiles } from "./policy/index.js";
 
 const HELP = `
 d0ma1n - Domain & brand name spoofing scanner
@@ -29,6 +30,8 @@ Options:
   --use-max-danger       Score with max danger instead of p95
   --include-non-pvalid   Include non-IDNA chars
   --script-mode <mode>   Script filtering: realistic (default) or all
+  --no-policy            Disable confusable-policy triage enrichment
+  --policy-profile <id>  Override policy profile (${listDomainPolicyProfiles().join(", ")})
   --tlds <list>          TLDs to check, comma-separated (default: com)
   --tld-variants         Also generate confusable TLD substitutions
   --concurrency <n>      Max parallel DNS lookups (default: 10)
@@ -66,6 +69,8 @@ function parseArgs(args: string[]): {
       options.includeNonPvalid = true;
     } else if (arg === "--tld-variants") {
       options.tldVariants = true;
+    } else if (arg === "--no-policy") {
+      options.noPolicy = true;
     } else if (arg === "-h" || arg === "--help") {
       options.help = true;
     } else if (arg.startsWith("--") && i + 1 < args.length) {
@@ -94,6 +99,7 @@ function buildScanOptions(
   if (options.font) scanOpts.font = String(options.font);
   if (options.useMaxDanger) scanOpts.useMaxDanger = true;
   if (options.includeNonPvalid) scanOpts.includeNonPvalid = true;
+  if (options.noPolicy) scanOpts.policy = false;
   if (options.tlds) scanOpts.tlds = String(options.tlds).split(",");
   if (options.tldVariants) scanOpts.tldVariants = true;
   if (options.concurrency)
@@ -104,6 +110,15 @@ function buildScanOptions(
     if (mode === "realistic" || mode === "all") {
       scanOpts.scriptMode = mode;
     }
+  }
+  if (options["policy-profile"]) {
+    const profile = String(options["policy-profile"]);
+    if (!isDomainPolicyProfileName(profile)) {
+      throw new Error(
+        `Unknown policy profile "${profile}". Available: ${listDomainPolicyProfiles().join(", ")}`
+      );
+    }
+    scanOpts.policyProfile = profile;
   }
 
   return scanOpts;

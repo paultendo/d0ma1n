@@ -17,12 +17,16 @@ describe("scan integration", () => {
     expect(result.totalGenerated).toBeGreaterThan(0);
     expect(result.variants.length).toBeGreaterThan(0);
     expect(result.variants.length).toBeLessThanOrEqual(10);
+    expect(result.variants.some((v) => v.policy)).toBe(true);
 
-    // Variants should be sorted by danger descending
+    // Variants should be sorted by policy severity first.
+    const priority = { block: 4, review: 3, warn: 2, allow: 1 } as const;
     for (let i = 1; i < result.variants.length; i++) {
-      expect(result.variants[i - 1].dangerScore).toBeGreaterThanOrEqual(
-        result.variants[i].dangerScore
-      );
+      const prev = result.variants[i - 1];
+      const curr = result.variants[i];
+      const prevPriority = prev.policy ? priority[prev.policy.decision] : 0;
+      const currPriority = curr.policy ? priority[curr.policy.decision] : 0;
+      expect(prevPriority).toBeGreaterThanOrEqual(currPriority);
     }
   });
 
@@ -31,6 +35,7 @@ describe("scan integration", () => {
     const output = formatScanResult(result, "table");
     expect(output).toContain("d0ma1n");
     expect(output).toContain("test.com");
+    expect(output).toContain("Policy");
   });
 
   it("formats as JSON", async () => {
@@ -44,7 +49,7 @@ describe("scan integration", () => {
   it("formats as CSV", async () => {
     const result = await scan("test.com", { top: 3, maxEdits: 1 });
     const csv = formatScanResult(result, "csv");
-    expect(csv).toContain("domain,danger_score");
+    expect(csv).toContain("domain,danger_score,policy_decision");
     const lines = csv.split("\n");
     expect(lines.length).toBeGreaterThan(1); // header + data
   });
@@ -74,6 +79,16 @@ describe("scan integration", () => {
     );
     // Should include variants for both TLDs
     expect(tlds.size).toBeGreaterThanOrEqual(1);
+  });
+
+  it("can disable policy enrichment", async () => {
+    const result = await scan("paypal.com", {
+      top: 5,
+      maxEdits: 1,
+      policy: false,
+    });
+
+    expect(result.variants.every((v) => v.policy === undefined)).toBe(true);
   });
 });
 

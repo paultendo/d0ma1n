@@ -24,7 +24,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "namespace-guard": "^0.19.1"
+    "namespace-guard": "^0.21.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

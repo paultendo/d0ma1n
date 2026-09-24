@@ -1,8 +1,14 @@
 import { CONFUSABLE_WEIGHTS } from "namespace-guard/confusable-weights";
 import { FONT_SPECIFIC_WEIGHTS } from "namespace-guard/font-specific-weights";
 import type { ConfusableWeights } from "namespace-guard";
+import {
+  evaluateDomainSpoof,
+  getDomainPolicyProfile,
+  getDomainPolicyProfileForTld,
+} from "./policy/index.js";
 import type { RawVariant } from "./generate.js";
-import type { DomainVariant, Substitution, ScoreOptions } from "./types.js";
+import type { DomainRegistryProfileName } from "./policy/index.js";
+import type { DomainVariant, DomainVariantPolicy, Substitution, ScoreOptions } from "./types.js";
 import { getScript } from "./reverse-map.js";
 
 /** Web-safe fonts that can be rendered via CSS font-family directly. */
@@ -23,7 +29,9 @@ const WEB_SAFE_FONTS = new Set([
 /**
  * Compute the composite danger score for a variant.
  *
- * Formula: product(stableDanger_i) * (1 - 0.1 * (editCount - 1))
+ * Formula: min(stableDanger_i) * (1 - 0.1 * (editCount - 1)). Each stableDanger is the share of text fonts where that
+ * substitution looks alike (confusable-vision release 2); the whole label can only look alike where every substitution
+ * does, so the weakest bounds it.
  * Full single-script replacements skip the multi-edit penalty (they are the
  * most dangerous attack vector: the entire label is a single non-Latin script).
  * Mixed-script penalty: -0.1 (browsers show punycode for mixed scripts)
@@ -39,7 +47,7 @@ export function computeDangerScore(
 
   let product = 1;
   for (const sub of substitutions) {
-    product *= sub[scoreKey];
+    product = Math.min(product, sub[scoreKey]);
   }
 
   // Full single-script replacements skip the multi-edit penalty.
@@ -121,6 +129,46 @@ export function toPunycode(domain: string): string {
 }
 
 /**
+ * The policy verdict for one variant: registry profile, how each surface would show it, and a decision. Called
+ * again with registered set once DNS shows the domain exists.
+ */
+export function evaluateVariantPolicy(
+  label: string,
+  substitutions: Substitution[],
+  targetLabel: string,
+  tld: string,
+  options?: { profileName?: DomainRegistryProfileName; useMaxDanger?: boolean; registered?: boolean }
+): DomainVariantPolicy {
+  const profile = options?.profileName
+    ? getDomainPolicyProfile(options.profileName)
+    : getDomainPolicyProfileForTld(tld);
+  const assessment = evaluateDomainSpoof(label, targetLabel, {
+    tld,
+    profile,
+    ...(options?.registered === undefined ? {} : { registered: options.registered }),
+    observedSubstitutions: substitutions.map((sub) => ({
+      index: sub.position,
+      from: sub.original,
+      to: sub.replacement,
+      similarity: options?.useMaxDanger ? sub.danger : sub.stableDanger,
+    })),
+  });
+  return {
+    profile: profile.name,
+    decision: assessment.decision,
+    score: assessment.score,
+    displayMode: assessment.displayMode,
+    registrable: assessment.registrable,
+    ...(assessment.registered === undefined ? {} : { registered: assessment.registered }),
+    surfaces: assessment.surfaces,
+    spoof: assessment.spoof,
+    danger: assessment.danger,
+    reasons: assessment.reasons,
+    notes: assessment.notes,
+  };
+}
+
+/**
  * Score raw variants and produce full DomainVariant records.
  */
 export function scoreVariants(
@@ -170,15 +218,25 @@ export function scoreVariants(
       }
     }
 
+    const policy =
+      options?.targetLabel && options?.policy !== false
+        ? evaluateVariantPolicy(raw.label, raw.substitutions, options.targetLabel, tld, {
+            profileName: options?.policyProfile,
+            useMaxDanger: options?.useMaxDanger,
+          })
+        : undefined;
+
     return {
       domain,
       dangerScore,
       editCount: raw.substitutions.length,
       substitutions: raw.substitutions,
       ...(raw.fullReplacement ? { fullReplacement: true } : {}),
+      ...(raw.probe ? { probe: true } : {}),
       bestFont,
       bestFontScore,
       punycode: toPunycode(domain),
+      policy,
     };
   });
 }

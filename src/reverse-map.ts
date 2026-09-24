@@ -2,6 +2,7 @@ import { CONFUSABLE_MAP_FULL } from "namespace-guard";
 import { CONFUSABLE_WEIGHTS } from "namespace-guard/confusable-weights";
 import type { ConfusableWeights } from "namespace-guard";
 import type { ConfusableSubstitute, PrototypeBuckets } from "./types.js";
+import { domainToASCII } from "node:url";
 
 /** Unicode script detectors, ordered by frequency in spoofing attacks. */
 const SCRIPT_DETECTORS: [string, RegExp][] = [
@@ -20,12 +21,44 @@ const SCRIPT_DETECTORS: [string, RegExp][] = [
   ["Thai", /\p{Script=Thai}/u],
 ];
 
+/**
+ * Every other Unicode script, so rare scripts are not lumped together as "Common": a label mixing Lisu, Mro and
+ * Tifinagh is mixed-script, and realistic mode must see that. Names the runtime's regex engine does not know (a
+ * newer Unicode version than it ships) are skipped.
+ */
+const OTHER_SCRIPTS = "Adlam Ahom Anatolian_Hieroglyphs Avestan Balinese Bamum Bassa_Vah Batak Bengali Beria_Erfe Bhaiksuki Bopomofo Brahmi Braille Buginese Buhid Canadian_Aboriginal Carian Caucasian_Albanian Chakma Cham Cherokee Chorasmian Coptic Cuneiform Cypriot Cypro_Minoan Deseret Dives_Akuru Dogra Duployan Egyptian_Hieroglyphs Elbasan Elymaic Ethiopic Garay Glagolitic Gothic Grantha Gujarati Gunjala_Gondi Gurmukhi Gurung_Khema Hanifi_Rohingya Hanunoo Hatran Imperial_Aramaic Inscriptional_Pahlavi Inscriptional_Parthian Javanese Kaithi Kannada Kawi Kayah_Li Kharoshthi Khitan_Small_Script Khmer Khojki Khudawadi Kirat_Rai Lao Lepcha Limbu Linear_A Linear_B Lisu Lycian Lydian Mahajani Makasar Malayalam Mandaic Manichaean Marchen Masaram_Gondi Medefaidrin Meetei_Mayek Mende_Kikakui Meroitic_Cursive Meroitic_Hieroglyphs Miao Modi Mongolian Mro Multani Myanmar Nabataean Nag_Mundari Nandinagari New_Tai_Lue Newa Nko Nushu Nyiakeng_Puachue_Hmong Ogham Ol_Chiki Ol_Onal Old_Hungarian Old_Italic Old_North_Arabian Old_Permic Old_Persian Old_Sogdian Old_South_Arabian Old_Turkic Old_Uyghur Oriya Osage Osmanya Pahawh_Hmong Palmyrene Pau_Cin_Hau Phags_Pa Phoenician Psalter_Pahlavi Rejang Runic Samaritan Saurashtra Sharada Shavian Siddham Sidetic SignWriting Sinhala Sogdian Sora_Sompeng Soyombo Sundanese Sunuwar Syloti_Nagri Syriac Tagalog Tagbanwa Tai_Le Tai_Tham Tai_Viet Tai_Yo Takri Tamil Tangsa Tangut Telugu Thaana Tibetan Tifinagh Tirhuta Todhri Tolong_Siki Toto Tulu_Tigalari Ugaritic Vai Vithkuqi Wancho Warang_Citi Yezidi Yi Zanabazar_Square".split(" ");
+let otherDetectors: [string, RegExp][] | null = null;
+const scriptCache = new Map<string, string>();
+
 /** Detect the Unicode script of a character. */
 export function getScript(ch: string): string {
+  const cached = scriptCache.get(ch);
+  if (cached) return cached;
+  let found = "Common";
   for (const [name, re] of SCRIPT_DETECTORS) {
-    if (re.test(ch)) return name;
+    if (re.test(ch)) { found = name; break; }
   }
-  return "Common";
+  if (found === "Common") {
+    otherDetectors ??= OTHER_SCRIPTS.flatMap((n) => {
+      try { return [[n, new RegExp(`\\p{Script=${n}}`, "u")] as [string, RegExp]]; } catch { return []; }
+    });
+    for (const [name, re] of otherDetectors) {
+      if (re.test(ch)) { found = name; break; }
+    }
+  }
+  scriptCache.set(ch, found);
+  return found;
+}
+
+const stableCache = new Map<string, boolean>();
+/** A character that can stand in a domain label as itself: IDNA accepts it and does not map it (capitals map to lowercase). */
+export function idnaStable(ch: string): boolean {
+  let ok = stableCache.get(ch);
+  if (ok === undefined) {
+    ok = ch === ch.toLowerCase() && domainToASCII(`${ch}.com`) !== "";
+    stableCache.set(ch, ok);
+  }
+  return ok;
 }
 
 /** Format a codepoint as "U+XXXX". */
@@ -93,6 +126,8 @@ export function buildPrototypeBuckets(options?: {
       return;
     }
 
+    // A substitute a domain label cannot hold as itself (a capital, a character IDNA refuses) is no variant
+    if (!idnaStable(sub)) return;
     const subScript = getScript(sub);
     const fromScript = getScript(from);
 

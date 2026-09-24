@@ -31,6 +31,14 @@ function colorThreat(level: string): string {
   return `${DIM}---${RESET}`;
 }
 
+/** Color a policy decision. */
+function colorPolicy(decision: string): string {
+  if (decision === "block") return `${RED}block${RESET}`;
+  if (decision === "review") return `${YELLOW}review${RESET}`;
+  if (decision === "warn") return `${CYAN}warn${RESET}`;
+  return `${GREEN}allow${RESET}`;
+}
+
 /** Pad a string to a fixed display width. */
 function pad(s: string, width: number): string {
   // Strip ANSI codes for length calculation
@@ -50,13 +58,18 @@ export function formatTable(result: ScanResult): string {
     `${BOLD}d0ma1n${RESET} scan: ${CYAN}${result.original}${RESET}`
   );
   lines.push(
-    `${DIM}${result.totalGenerated} variants generated, showing top ${result.variants.length}${RESET}`
+    `${DIM}${result.totalGenerated} lookalike labels generated, showing ${result.variants.length} domains${RESET}`
   );
   lines.push("");
 
   // Header
   const hasResolve = result.variants.some((v) => v.dns);
-  let header = `  ${pad("Domain", 35)} ${pad("Danger", 8)} ${pad("Edits", 6)} ${pad("Script(s)", 15)} ${pad("Punycode", 30)}`;
+  const hasPolicy = result.variants.some((v) => v.policy);
+  let header = `  ${pad("Domain", 35)} ${pad("Danger", 8)}`;
+  if (hasPolicy) {
+    header += ` ${pad("Policy", 8)} ${pad("Display", 9)}`;
+  }
+  header += ` ${pad("Edits", 6)} ${pad("Script(s)", 15)} ${pad("Punycode", 30)}`;
   if (hasResolve) {
     header += ` ${pad("Status", 12)} ${pad("IP", 18)}`;
   }
@@ -71,7 +84,11 @@ export function formatTable(result: ScanResult): string {
       ...new Set(v.substitutions.map((s) => s.script)),
     ].join("+");
 
-    let line = `  ${pad(v.domain, 35)} ${pad(colorDanger(v.dangerScore), 8 + 9)} ${pad(String(v.editCount), 6)} ${pad(scripts, 15)} ${pad(v.punycode, 30)}`;
+    let line = `  ${pad(v.domain, 35)} ${pad(colorDanger(v.dangerScore), 8 + 9)}`;
+    if (hasPolicy) {
+      line += ` ${pad(colorPolicy(v.policy?.decision ?? "allow"), 8 + 9)} ${pad(v.policy?.displayMode ?? "", 9)}`;
+    }
+    line += ` ${pad(String(v.editCount), 6)} ${pad(scripts, 15)} ${pad(v.punycode, 30)}`;
 
     if (hasResolve) {
       const status = v.dns
@@ -112,6 +129,18 @@ export function formatTable(result: ScanResult): string {
     lines.push("");
   }
 
+  if (hasPolicy) {
+    const counts = {
+      block: result.variants.filter((v) => v.policy?.decision === "block").length,
+      review: result.variants.filter((v) => v.policy?.decision === "review").length,
+      warn: result.variants.filter((v) => v.policy?.decision === "warn").length,
+    };
+    lines.push(
+      `${DIM}Policy triage:${RESET} ${colorPolicy("block")} ${counts.block}  ${colorPolicy("review")} ${counts.review}  ${colorPolicy("warn")} ${counts.warn}`
+    );
+    lines.push("");
+  }
+
   return lines.join("\n");
 }
 
@@ -129,6 +158,12 @@ export function formatCsv(result: ScanResult): string {
   const headers = [
     "domain",
     "danger_score",
+    "policy_decision",
+    "policy_score",
+    "policy_display_mode",
+    "policy_registrable",
+    "policy_spoof",
+    "policy_profile",
     "edit_count",
     "scripts",
     "punycode",
@@ -148,6 +183,12 @@ export function formatCsv(result: ScanResult): string {
     return [
       v.domain,
       v.dangerScore.toFixed(4),
+      v.policy?.decision ?? "",
+      v.policy?.score.toFixed(0) ?? "",
+      v.policy?.displayMode ?? "",
+      v.policy ? String(v.policy.registrable) : "",
+      v.policy ? String(v.policy.spoof) : "",
+      v.policy?.profile ?? "",
       v.editCount,
       scripts,
       v.punycode,

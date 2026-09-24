@@ -23,6 +23,7 @@ export type {
   Substitution,
   DnsResult,
   DomainVariant,
+  DomainVariantPolicy,
   ConfusableSubstitute,
   PrototypeBuckets,
   GenerateOptions,

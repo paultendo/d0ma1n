@@ -1,4 +1,11 @@
 import type { ConfusableWeight, ConfusableWeights } from "namespace-guard";
+import type {
+  DomainSurfaces,
+  DomainDecision,
+  DomainDisplayMode,
+  DomainRegistryProfileName,
+  DomainRiskReason,
+} from "./policy/index.js";
 
 /** A single character substitution in a domain variant. */
 export type Substitution = {
@@ -48,10 +55,40 @@ export type DomainVariant = {
   bestFontScore?: number;
   /** True if this is a full single-script replacement of the entire label. */
   fullReplacement?: boolean;
+  /** A mixed-script lookalike found by probing: kept because it is registered. */
+  probe?: boolean;
   /** Punycode (ACE) form of the domain. */
   punycode: string;
   /** DNS resolution data (only when --resolve is used). */
   dns?: DnsResult;
+  /** Policy-layer triage derived from confusable-policy. */
+  policy?: DomainVariantPolicy;
+};
+
+/** Compact policy summary attached to scanned variants. */
+export type DomainVariantPolicy = {
+  /** Registry/browser policy profile used for this target TLD. */
+  profile: DomainRegistryProfileName;
+  /** Final decision for triage. */
+  decision: DomainDecision;
+  /** Weighted policy score 0-100. */
+  score: number;
+  /** Whether the candidate would likely render as Unicode or punycode. */
+  displayMode: DomainDisplayMode;
+  /** Whether the label survives the profile's registrability assumptions. */
+  registrable: boolean;
+  /** Set once DNS shows the domain exists. */
+  registered?: boolean;
+  /** How Chromium, Firefox and phone camera banners would show it. */
+  surfaces: DomainSurfaces;
+  /** Whether the label is a realistic whole-script spoof of the target. */
+  spoof: boolean;
+  /** Spoof danger returned by the policy engine. */
+  danger: number;
+  /** Reason codes and weights explaining the decision. */
+  reasons: DomainRiskReason[];
+  /** Human-readable notes from the policy engine. */
+  notes: string[];
 };
 
 /** A confusable substitute for a given ASCII prototype character. */
@@ -100,6 +137,12 @@ export type ScoreOptions = {
   useMaxDanger?: boolean;
   /** Font name for font-specific scoring. */
   font?: string;
+  /** Original label being protected, used for policy enrichment. */
+  targetLabel?: string;
+  /** Disable policy enrichment. Enabled by default when targetLabel is provided. */
+  policy?: boolean;
+  /** Override the policy profile instead of resolving it from the TLD. */
+  policyProfile?: DomainRegistryProfileName;
 };
 
 /** Options for DNS resolution. */
@@ -124,6 +167,19 @@ export type ScanOptions = {
   tldVariants?: boolean;
   /** Font name for font-specific scoring. */
   font?: string;
+  /** Disable confusable-policy enrichment. */
+  policy?: boolean;
+  /** Override the policy profile used for all scored variants. */
+  policyProfile?: DomainRegistryProfileName;
+  /** When resolving, also probe one-substitution mixed-script variants and keep those that are registered
+   * (default true). */
+  probeMixedScript?: boolean;
+  /** How many mixed-script probes to resolve, most alike first (default 60). */
+  probeLimit?: number;
+  /** DNS resolver to use instead of the Node one (the Worker passes DNS over HTTPS). */
+  resolver?: { resolve(domain: string): Promise<DnsResult> };
+  /** Prebuilt lookup buckets, to reuse across scans. */
+  buckets?: PrototypeBuckets;
 } & GenerateOptions &
   ResolveOptions & {
     useMaxDanger?: boolean;

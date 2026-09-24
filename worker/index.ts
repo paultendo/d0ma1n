@@ -1,11 +1,9 @@
-import { generateVariants } from "../src/generate.js";
-import { scoreVariants } from "../src/score.js";
+import { scan } from "../src/scan.js";
 import { buildPrototypeBuckets } from "../src/reverse-map.js";
-import { splitDomain, getTargetTlds } from "../src/tld.js";
 import { reverseScan, fromPunycode } from "../src/reverse-scan.js";
 import { createDohResolver } from "./resolve-doh.js";
 import { renderLandingPage, renderScanPage, renderTermsPage } from "./page.js";
-import type { DomainVariant, ScanResult } from "../src/types.js";
+import type { ScanResult } from "../src/types.js";
 
 interface Env {
   SCAN_CACHE: KVNamespace;
@@ -71,8 +69,8 @@ function getBuckets() {
 }
 
 /**
- * Run a scan: generate variants, score, optionally resolve DNS.
- * maxEdits clamped to 1 to keep CPU predictable.
+ * Run a scan with the library's own pipeline (generation, scoring, policy, mixed-script probes, DNS), so the site
+ * and the CLI give the same answers. maxEdits is clamped to 1 to keep CPU predictable.
  */
 async function runScan(
   domain: string,
@@ -84,60 +82,19 @@ async function runScan(
     useMaxDanger?: boolean;
   }
 ): Promise<ScanResult> {
-  const { label, tld } = splitDomain(domain);
-  const top = Math.min(200, options.top ?? 20);
-  const threshold = options.threshold ?? 0;
-
-  const buckets = getBuckets();
-
-  const rawVariants = generateVariants(
-    label,
-    { maxEdits: 1, maxPerChar: 10, maxVariants: 2000, useMaxDanger: options.useMaxDanger },
-    buckets
-  );
-
-  const totalGenerated = rawVariants.length;
-
-  const scripts = new Set<string>();
-  for (const v of rawVariants) {
-    for (const s of v.substitutions) scripts.add(s.script);
-  }
-
-  const tlds = getTargetTlds({ baseTlds: [tld], scripts });
-
-  let allVariants: DomainVariant[] = [];
-  for (const targetTld of tlds) {
-    const scored = scoreVariants(rawVariants, targetTld, {
-      useMaxDanger: options.useMaxDanger,
-      font: options.font,
-    });
-    allVariants.push(...scored);
-  }
-
-  allVariants = allVariants.filter((v) => v.dangerScore >= threshold);
-  allVariants.sort((a, b) => b.dangerScore - a.dangerScore);
-  allVariants = allVariants.slice(0, top);
-
-  if (options.resolve) {
-    const resolver = createDohResolver();
-    await Promise.all(
-      allVariants.map(async (v) => {
-        v.dns = await resolver.resolve(v.domain);
-      })
-    );
-
-    allVariants.sort((a, b) => {
-      const aReg = a.dns?.registered ? 1 : 0;
-      const bReg = b.dns?.registered ? 1 : 0;
-      if (aReg !== bReg) return bReg - aReg;
-      const aActive = a.dns?.threatLevel === "active" ? 1 : 0;
-      const bActive = b.dns?.threatLevel === "active" ? 1 : 0;
-      if (aActive !== bActive) return bActive - aActive;
-      return b.dangerScore - a.dangerScore;
-    });
-  }
-
-  return { original: domain, label, tld, totalGenerated, variants: allVariants };
+  return scan(domain, {
+    resolve: options.resolve,
+    resolver: options.resolve ? createDohResolver() : undefined,
+    buckets: getBuckets(),
+    top: Math.min(200, options.top ?? 20),
+    threshold: options.threshold ?? 0,
+    font: options.font,
+    useMaxDanger: options.useMaxDanger,
+    maxEdits: 1,
+    maxPerChar: 10,
+    maxVariants: 2000,
+    probeLimit: 40,
+  });
 }
 
 /**
@@ -164,7 +121,7 @@ async function cachedScan(
 ): Promise<ScanResult> {
   const resolve = options.resolve ?? true;
   const font = options.font ?? "";
-  const cacheKey = `v2:${domain}:${resolve}:${font}`;
+  const cacheKey = `v3:${domain}:${resolve}:${font}`;
 
   // Try KV cache first (free read)
   const cached = await kv.get(cacheKey, "json") as ScanResult | null;

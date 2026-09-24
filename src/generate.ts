@@ -14,6 +14,8 @@ export type RawVariant = {
   substitutions: Substitution[];
   /** True if this is a full single-script replacement of the entire label. */
   fullReplacement?: boolean;
+  /** A mixed-script probe: reported only if it turns out to be registered. */
+  probe?: boolean;
 };
 
 /**
@@ -238,6 +240,42 @@ function makeSubstitution(
     stableDanger: sub.stableDanger,
     idnaPvalid: sub.idnaPvalid,
   };
+}
+
+/** The ICANN-approved IDN scripts d0ma1n measures, other than Latin. */
+const IDN_SCRIPTS = new Set([
+  "Cyrillic", "Greek", "Armenian", "Hebrew", "Arabic", "Devanagari", "Han", "Hiragana", "Katakana", "Hangul", "Georgian", "Thai",
+]);
+
+/**
+ * One-substitution variants that swap in a character from another script: mixed-script labels. Browsers show these
+ * as punycode and most registries now refuse them, but some were registered before the rules, and some
+ * surfaces show them decoded. They are worth resolving, and worth reporting only if they turn out to exist.
+ */
+export function generateMixedScriptProbes(
+  label: string,
+  buckets: PrototypeBuckets,
+  options?: { maxProbes?: number; useMaxDanger?: boolean }
+): RawVariant[] {
+  const maxProbes = options?.maxProbes ?? 60;
+  const scoreKey = options?.useMaxDanger ? "danger" : "stableDanger";
+  const chars = [...label.toLowerCase()];
+  const probes: RawVariant[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i < chars.length; i++) {
+    for (const sub of buckets[chars[i]] ?? []) {
+      // Only scripts a registry could put in a domain label: characters the lookup calls "Common" (N'Ko, Old Italic
+      // and the like) cannot be registered, so resolving them would spend lookups on names nobody can hold.
+      if (!sub.crossScript || !IDN_SCRIPTS.has(sub.script)) continue;
+      const mutated = [...chars];
+      mutated[i] = sub.char;
+      const mutatedLabel = mutated.join("");
+      if (seen.has(mutatedLabel)) continue;
+      seen.add(mutatedLabel);
+      probes.push({ label: mutatedLabel, substitutions: [makeSubstitution(i, chars[i], sub)], probe: true });
+    }
+  }
+  return finalize(probes, scoreKey).slice(0, maxProbes);
 }
 
 /** Sort variants by aggregate danger (most dangerous first). */

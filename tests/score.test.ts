@@ -53,8 +53,8 @@ describe("computeDangerScore", () => {
       },
     ];
     const score = computeDangerScore(subs);
-    // 0.9 * 0.85 * (1 - 0.1) = 0.765 * 0.9 = 0.6885
-    expect(score).toBeCloseTo(0.9 * 0.85 * 0.9, 2);
+    // the weakest substitution bounds the label: min(0.9, 0.85) * (1 - 0.1)
+    expect(score).toBeCloseTo(0.85 * 0.9, 2);
   });
 
   it("uses max danger when configured", () => {
@@ -96,9 +96,8 @@ describe("computeDangerScore", () => {
       },
     ];
     const score = computeDangerScore(subs);
-    // product * editPenalty * mixedScriptPenalty
-    // 0.9 * 0.85 * 0.9 * 0.9
-    expect(score).toBeCloseTo(0.9 * 0.85 * 0.9 * 0.9, 2);
+    // weakest substitution * editPenalty * mixedScriptPenalty
+    expect(score).toBeCloseTo(0.85 * 0.9 * 0.9, 2);
   });
 });
 
@@ -118,7 +117,9 @@ describe("scoreVariants", () => {
 
   it("produces scored DomainVariant records", () => {
     const raw = generateVariants("paypal", { maxEdits: 1, maxPerChar: 3, scriptMode: "all" }, buckets);
-    const scored = scoreVariants(raw.slice(0, 5), "com");
+    const scored = scoreVariants(raw.slice(0, 5), "com", {
+      targetLabel: "paypal",
+    });
 
     for (const v of scored) {
       expect(v.domain).toContain(".com");
@@ -126,6 +127,8 @@ describe("scoreVariants", () => {
       expect(v.dangerScore).toBeLessThanOrEqual(1);
       expect(v.editCount).toBe(1);
       expect(v.punycode).toBeDefined();
+      expect(v.policy).toBeDefined();
+      expect(v.policy?.profile).toBe("verisign-com");
     }
   });
 });

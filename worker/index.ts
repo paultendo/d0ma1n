@@ -122,7 +122,7 @@ async function cachedScan(
 ): Promise<ScanResult | "rate-limited"> {
   const resolve = options.resolve ?? true;
   const font = options.font ?? "";
-  const cacheKey = `v5:${domain}:${resolve}:${font}`;
+  const cacheKey = `v6:${domain}:${resolve}:${font}`;
 
   // Try KV cache first (free read)
   const cached = await kv.get(cacheKey, "json") as ScanResult | null;

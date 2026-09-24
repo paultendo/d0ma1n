@@ -110,7 +110,7 @@ export function buildPrototypeBuckets(options?: {
   useMaxDanger?: boolean;
 }): PrototypeBuckets {
   const includeNonPvalid = options?.includeNonPvalid ?? false;
-  const maxPerChar = options?.maxPerChar ?? 50;
+  const maxPerChar = options?.maxPerChar ?? Infinity;
   const useMaxDanger = options?.useMaxDanger ?? false;
 
   const raw: Record<string, Map<string, ConfusableSubstitute>> = {};

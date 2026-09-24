@@ -120,7 +120,7 @@ export type PrototypeBuckets = Record<string, ConfusableSubstitute[]>;
 export type GenerateOptions = {
   /** Maximum simultaneous substitutions (default: 2). */
   maxEdits?: number;
-  /** Maximum substitutes to try per character position (default: 10). */
+  /** Maximum substitutes to try per character position (default: no limit; maxVariants bounds the total). */
   maxPerChar?: number;
   /** Hard cap on total variants generated (default: 5000). */
   maxVariants?: number;

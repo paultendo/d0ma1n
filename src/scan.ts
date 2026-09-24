@@ -65,8 +65,8 @@ export async function scan(
   const top = options?.top ?? 20;
   const threshold = options?.threshold ?? 0.0;
 
-  // Build buckets with scan options (or reuse the caller's). maxPerChar is not applied here: generateVariants caps its
-  // k-edit enumeration itself, and whole-script replacement needs every letter's substitute in the target script
+  // Build buckets with scan options (or reuse the caller's). maxPerChar is not applied here: whole-script replacement
+  // needs every letter's substitute in the target script, and generateVariants applies it to its k-edit enumeration
   const buckets = options?.buckets ?? buildPrototypeBuckets({
     includeNonPvalid: options?.includeNonPvalid,
     useMaxDanger: options?.useMaxDanger,

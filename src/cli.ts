@@ -24,7 +24,7 @@ Options:
   --top <n>              Show top N results (default: 20)
   --threshold <n>        Min danger score 0-1 (default: 0.0)
   --max-edits <n>        Max simultaneous substitutions (default: 2)
-  --max-per-char <n>     Max substitutes per position (default: 10)
+  --max-per-char <n>     Max substitutes per position (default: no limit)
   --max-variants <n>     Hard cap on generated variants (default: 5000)
   --font <name>          Use font-specific weights
   --use-max-danger       Score with max danger instead of p95

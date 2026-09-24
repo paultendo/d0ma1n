@@ -37,7 +37,7 @@ export function generateVariants(
   buckets?: PrototypeBuckets
 ): RawVariant[] {
   const maxEdits = options?.maxEdits ?? 2;
-  const maxPerChar = options?.maxPerChar ?? 10;
+  const maxPerChar = options?.maxPerChar ?? Infinity;
   const maxVariants = options?.maxVariants ?? 5000;
   const useMaxDanger = options?.useMaxDanger ?? false;
   const scriptMode = options?.scriptMode ?? "realistic";
@@ -144,7 +144,7 @@ export function generateVariants(
         if (!subsI) continue;
         const sameI = subsI
           .filter((s) => !s.crossScript)
-          .slice(0, Math.min(maxPerChar, 5));
+          .slice(0, maxPerChar);
         if (sameI.length === 0) continue;
 
         for (let j = i + 1; j < chars.length; j++) {
@@ -152,7 +152,7 @@ export function generateVariants(
           if (!subsJ) continue;
           const sameJ = subsJ
             .filter((s) => !s.crossScript)
-            .slice(0, Math.min(maxPerChar, 5));
+            .slice(0, maxPerChar);
 
           for (const subI of sameI) {
             for (const subJ of sameJ) {
@@ -200,8 +200,8 @@ export function generateVariants(
           if (!subsJ) continue;
 
           // Cross the top substitutes for positions i and j
-          const topI = subsI.slice(0, Math.min(maxPerChar, 5));
-          const topJ = subsJ.slice(0, Math.min(maxPerChar, 5));
+          const topI = subsI.slice(0, maxPerChar);
+          const topJ = subsJ.slice(0, maxPerChar);
 
           for (const subI of topI) {
             for (const subJ of topJ) {

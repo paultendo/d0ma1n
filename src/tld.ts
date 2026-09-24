@@ -66,7 +66,7 @@ export function generateTldVariants(
   tld: string,
   buckets?: PrototypeBuckets
 ): string[] {
-  const protoBuckets = buckets ?? buildPrototypeBuckets({ maxPerChar: 5 });
+  const protoBuckets = buckets ?? buildPrototypeBuckets();
   const chars = [...tld.toLowerCase()];
   const variants: string[] = [];
   const seen = new Set<string>();

@@ -6,6 +6,8 @@ const RDAP_BOOTSTRAP = "https://data.iana.org/rdap/dns.json";
 /** RDAP lookups per scan: registries rate-limit, and only the most alike results need the registry's word. */
 const RDAP_PER_SCAN = 20;
 const DNS_SERVFAIL = 2;
+/** Registries and IANA refuse anonymous requests; say who is asking. */
+const UA = "d0ma1n/1.0 (+https://d0ma1n.app)";
 
 type DohAnswer = {
   name: string;
@@ -44,14 +46,17 @@ async function dohQuery(domain: string, type: string): Promise<{ status?: number
 /** RDAP base URLs by TLD, from IANA's bootstrap file (fetched once per isolate). */
 let rdapBases: Promise<Map<string, string>> | null = null;
 function rdapBase(tld: string): Promise<string | undefined> {
-  rdapBases ??= fetch(RDAP_BOOTSTRAP, { signal: AbortSignal.timeout(5000) })
+  rdapBases ??= fetch(RDAP_BOOTSTRAP, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(5000) })
     .then((r) => r.json() as Promise<{ services: [string[], string[]][] }>)
     .then((j) => {
       const m = new Map<string, string>();
       for (const [tlds, urls] of j.services) for (const t of tlds) m.set(t, urls[0]!.replace(/\/?$/, "/"));
       return m;
     })
-    .catch(() => new Map<string, string>());
+    .catch(() => {
+      rdapBases = null;
+      return new Map<string, string>();
+    });
   return rdapBases.then((m) => m.get(tld));
 }
 
@@ -61,7 +66,7 @@ async function rdapLookup(ascii: string): Promise<DnsResult["rdap"] | undefined>
   if (!base) return undefined;
   try {
     const res = await fetch(`${base}domain/${ascii}`, {
-      headers: { Accept: "application/rdap+json" },
+      headers: { Accept: "application/rdap+json", "User-Agent": UA },
       signal: AbortSignal.timeout(4000),
     });
     if (res.status === 404) return { registered: false };

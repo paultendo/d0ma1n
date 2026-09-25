@@ -48,6 +48,9 @@ async function landingData(): Promise<LandingData> {
       real, fake, index: sub.position, original: sub.original, char: sub.replacement,
       codepoint: toCodepoint(sub.replacement), name: CHAR_NAMES[sub.replacement] ?? "", block: getBlock(sub.replacement),
       similarity: Math.round(v.dangerScore * 100), registrable: v.policy?.registrable ?? false, punycode: v.punycode,
+      registration: await createDohResolver().resolve(fake).then((d) => ({
+        registered: d.registered, since: d.rdap?.since, registrar: d.rdap?.registrar,
+      })).catch(() => null),
     });
   }
   const [real, fake] = ["o", "\u1D0F"];
@@ -209,7 +212,7 @@ async function cachedScan(
 ): Promise<ScanResult | "rate-limited"> {
   const resolve = options.resolve ?? true;
   const font = options.font ?? "";
-  const cacheKey = `v9:${domain}:${resolve}:${font}`;
+  const cacheKey = `v10:${domain}:${resolve}:${font}`;
 
   // Try KV cache first (free read)
   const cached = await kv.get(cacheKey, "json") as ScanResult | null;

@@ -37,8 +37,10 @@ export type DnsResult = {
   mx: { priority: number; exchange: string }[];
   ns: string[];
   hasMx: boolean;
-  /** "active" = has MX (likely phishing), "parked" = A but no MX, "unregistered" = no records. */
+  /** "active" = has MX (likely phishing), "parked" = registered without MX, "unregistered" = not registered. */
   threatLevel: "active" | "parked" | "unregistered";
+  /** The registry's RDAP record, when DNS alone could not settle whether the name is registered. */
+  rdap?: { registered: boolean; since?: string; registrar?: string };
 };
 
 /** A generated domain variant with scoring and optional DNS data. */

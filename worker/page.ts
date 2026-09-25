@@ -5,6 +5,7 @@ export type LandingData = {
   examples: Array<{
     real: string; fake: string; index: number; original: string; char: string; codepoint: string; name: string;
     block: string; similarity: number; registrable: boolean; punycode: string;
+    registration: { registered: boolean; since?: string; registrar?: string } | null;
   }>;
   fontStrip: Array<{ font: string; danger: number | null }>;
   strip: { real: string; fake: string };
@@ -1035,9 +1036,15 @@ function renderVariantTable(variants, original) {
 
     let status;
     if (v.dns && v.dns.threatLevel === 'active') {
-      status = '<span class="threat-active">Active threat</span><div class="swap-note">Has mail servers</div>';
+      status = '<span class="threat-active">Active threat</span><div class="swap-note">Has mail servers' +
+        (v.dns.rdap && v.dns.rdap.registrar ? ', registered through ' + escHtml(v.dns.rdap.registrar) : '') + '</div>';
     } else if (isRegistered) {
       status = '<span class="threat-parked">Registered</span>';
+      const rd = v.dns.rdap;
+      if (rd && (rd.since || rd.registrar)) {
+        status += '<div class="swap-note">' + (rd.since ? 'Since ' + escHtml(rd.since) : 'Registered') +
+          (rd.registrar ? ', through ' + escHtml(rd.registrar) : '') + '</div>';
+      }
     } else if (v.policy && !v.policy.registrable) {
       status = '<span class="threat-none">Can&rsquo;t be registered</span><div class="swap-note">' + escHtml(refusal(v)) + '</div>';
     } else {
@@ -1166,7 +1173,10 @@ const HOME_SCRIPT = `<script>
           '<dt>Character</dt><dd><span class="mono">' + escHtml(ex.codepoint) + '</span> ' + escHtml(ex.name.charAt(0) + ex.name.slice(1).toLowerCase()) + '</dd>' +
           '<dt>Unicode block</dt><dd>' + escHtml(ex.block) + '</dd>' +
           '<dt>Looks alike</dt><dd>' + (ex.similarity >= 100 ? 'in every text font that includes it' : 'in ' + ex.similarity + '% of the text fonts that include it') + '</dd>' +
-          '<dt>Registrable</dt><dd>' + (ex.registrable ? 'Yes, at .com today' : 'No, the .com registry refuses it') + '</dd>' +
+          '<dt>Registered</dt><dd>' + (ex.registration && ex.registration.registered
+            ? 'Yes' + (ex.registration.since ? ', since ' + escHtml(ex.registration.since.slice(0, 4)) : '') +
+              (ex.registration.registrar ? ', through ' + escHtml(ex.registration.registrar) : '')
+            : ex.registrable ? 'No, and the .com registry would accept it' : 'No, and the .com registry refuses it') + '</dd>' +
           '<dt>Registered as</dt><dd><span class="mono">' + escHtml(ex.punycode) + '</span></dd>' +
         '</dl>' +
         '<button type="button" class="next" id="next">Next example</button>' +

@@ -8,7 +8,7 @@ import type { ScanResult } from "../src/types.js";
 import { getBlock, toCodepoint } from "../src/reverse-map.js";
 import { outsideRepertoire, registryRule } from "../src/policy/repertoire.js";
 import { evaluateDomainLabel, getDomainPolicyProfileForTld } from "../src/policy/index.js";
-import { TLD_RULES } from "../src/policy/repertoire-data.js";
+import { TLD_RULES, TLD_ASSUMED_ASCII } from "../src/policy/repertoire-data.js";
 import { FONT_SPECIFIC_WEIGHTS } from "namespace-guard/font-specific-weights";
 import { CONFUSABLE_WEIGHTS } from "namespace-guard/confusable-weights";
 
@@ -83,7 +83,7 @@ async function landingData(): Promise<LandingData> {
   });
   landing = {
     examples, fontStrip, heroPairs, strip: { real: "google", fake: label }, registries,
-    stats: { tlds: Object.keys(TLD_RULES).length, fonts: Object.keys(fonts).length },
+    stats: { tlds: Object.keys(TLD_RULES).length, assumed: TLD_ASSUMED_ASCII.length, fonts: Object.keys(fonts).length },
   };
   return landing;
 }
@@ -238,7 +238,7 @@ async function cachedScan(
 ): Promise<ScanResult | "rate-limited"> {
   const resolve = options.resolve ?? true;
   const font = options.font ?? "";
-  const cacheKey = `v15:${domain}:${resolve}:${font}`;
+  const cacheKey = `v16:${domain}:${resolve}:${font}`;
 
   // Try KV cache first (free read)
   const cached = await kv.get(cacheKey, "json") as ScanResult | null;

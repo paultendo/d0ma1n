@@ -125,7 +125,8 @@ export function buildPrototypeBuckets(options?: {
     sub: string,
     danger: number,
     stableDanger: number,
-    idnaPvalid: boolean
+    idnaPvalid: boolean,
+    measured: boolean
   ) => {
     if (from === sub) return;
     if (!includeNonPvalid && !idnaPvalid) return;
@@ -134,10 +135,12 @@ export function buildPrototypeBuckets(options?: {
     const existing = raw[from].get(sub);
     if (existing) {
       // Keep the higher score
-      if (stableDanger > existing.stableDanger) {
+      // A measurement always replaces the default score given to an unmeasured pair
+      if (stableDanger > existing.stableDanger || (measured && !existing.measured)) {
         existing.danger = danger;
         existing.stableDanger = stableDanger;
         existing.idnaPvalid = existing.idnaPvalid || idnaPvalid;
+        existing.measured = existing.measured || measured;
       }
       return;
     }
@@ -158,6 +161,7 @@ export function buildPrototypeBuckets(options?: {
       // Common-to-specific (e.g. digit "1" -> Cyrillic "І") IS cross-script
       // because it would create a mixed-script label.
       crossScript: subScript !== fromScript && !(fromScript === "Common" && subScript === "Common"),
+      measured,
     });
   };
 
@@ -179,9 +183,9 @@ export function buildPrototypeBuckets(options?: {
     const idnaPvalid = w?.idnaPvalid ?? false;
 
     // Forward: prototype -> confusable char (e.g. "a" -> Cyrillic "а")
-    addEdge(prototype, char, danger, stableDanger, idnaPvalid);
+    addEdge(prototype, char, danger, stableDanger, idnaPvalid, !!w);
     // Reverse: confusable char -> prototype (e.g. Cyrillic "а" -> "a")
-    addEdge(char, prototype, danger, stableDanger, idnaPvalid);
+    addEdge(char, prototype, danger, stableDanger, idnaPvalid, !!w);
   }
 
   // 2. CONFUSABLE_WEIGHTS: all visually-scored pairs, including cross-script.
@@ -195,10 +199,10 @@ export function buildPrototypeBuckets(options?: {
       // A domain shows lowercase, so a lookalike of a capital (Lisu ꓖ for G) never sits where g is read: skip it
       // rather than fold it onto the lowercase letter
       if (keyA === keyA.toLowerCase()) {
-        addEdge(keyA, keyB, weight.danger, weight.stableDanger, weight.idnaPvalid ?? false);
+        addEdge(keyA, keyB, weight.danger, weight.stableDanger, weight.idnaPvalid ?? false, true);
       }
       if (keyB === keyB.toLowerCase()) {
-        addEdge(keyB, keyA, weight.danger, weight.stableDanger, weight.idnaPvalid ?? false);
+        addEdge(keyB, keyA, weight.danger, weight.stableDanger, weight.idnaPvalid ?? false, true);
       }
     }
   }

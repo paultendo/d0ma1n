@@ -11,7 +11,7 @@ export type LandingData = {
   heroPairs: Array<{ real: string; fake: string; codepoint: string; alike: number }>;
   strip: { real: string; fake: string };
   registries: Array<{ tld: string; accepts: boolean | null; rule: string; assumed: boolean }>;
-  stats: { tlds: number; fonts: number };
+  stats: { tlds: number; assumed: number; fonts: number };
 };
 
 /** Generate the main landing page HTML. */
@@ -23,7 +23,7 @@ export function renderLandingPage(data: LandingData): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>d0ma1n - Lookalike domains you can't see</title>
-  <meta name="description" content="Lookalike domains, measured glyph by glyph and checked against every TLD's registry rules. Find the fakes of your domain before someone registers them.">
+  <meta name="description" content="Lookalike domains, measured glyph by glyph and checked against the registry rules of 1,400 TLDs. Find the fakes of your domain before someone registers them.">
   <meta property="og:title" content="d0ma1n - Lookalike domains you can't see">
   <meta property="og:description" content="Find the lookalikes of your domain that someone could register, measured glyph by glyph.">
   <meta property="og:type" content="website">
@@ -46,6 +46,7 @@ export function renderLandingPage(data: LandingData): string {
     <svg class="lg-defs" width="0" height="0" aria-hidden="true" focusable="false"></svg>
     ${homeSpecimen()}
     ${RESULTS_CONTAINER}
+    ${homeBrowsers()}
     ${homeMethod()}
     ${homeFonts(data)}
     ${homeRegistries(data)}
@@ -85,13 +86,42 @@ function homeSpecimen(): string {
 </section>`;
 }
 
+/** The first objection anyone raises: browsers show the xn-- form. Where that holds, and where it doesn't. */
+function homeBrowsers(): string {
+  return `
+<section class="sec reveal-up" id="browsers">
+  <div class="sec-head"><div>
+    <h2>Doesn&rsquo;t the browser catch these?</h2>
+    <p class="lede">Chrome catches this one. Its address bar shows g&#x1D0F;ogle.com as <span class="mono nowrap">xn--gogle-m29a.com</span>, because &#x1D0F; is outside the characters Unicode recommends for identifiers, and it also flags names that look like a site on its list of popular ones.</p>
+    <p class="lede">But the address bar only comes into it after the click. In an email or a chat message, a link reads however the sender typed it, and some camera apps show the address in a QR code as written too. Each d0ma1n report says which of your lookalikes Chrome would show as written.</p>
+  </div></div>
+  <div class="surfaces">
+    <figure class="surface">
+      <figcaption class="surface-k">Chrome&rsquo;s address bar, after the click</figcaption>
+      <div class="mock-bar"><span class="mono">xn--gogle-m29a.com</span></div>
+      <p class="surface-v caught">Shown in its xn-- form</p>
+    </figure>
+    <figure class="surface">
+      <figcaption class="surface-k">An email</figcaption>
+      <div class="mock-mail"><p class="mock-from">Account security</p><p>We stopped a sign-in attempt. Review it at <span class="mock-link">g&#x1D0F;ogle.com/security</span></p></div>
+      <p class="surface-v">Shown as the sender wrote it</p>
+    </figure>
+    <figure class="surface">
+      <figcaption class="surface-k">A chat message</figcaption>
+      <div class="mock-chat"><p class="mock-bubble">Can you approve this before 5? <span class="mock-link">g&#x1D0F;ogle.com/docs/q3-budget</span></p></div>
+      <p class="surface-v">Shown as the sender wrote it</p>
+    </figure>
+  </div>
+</section>`;
+}
+
 function homeMethod(): string {
   return `
 <section class="sec slab slab-dark reveal-up" id="method">
   <div class="sec-head"><div>
     <h2>How d0ma1n measures a lookalike</h2>
     <p class="lede">The lookalike data comes from <a href="https://github.com/paultendo/confusable-vision">confusable-vision</a>, an open-source project by <a href="https://paultendo.github.io">Paul Wood FRSA</a> that measures how alike two characters look.</p>
-    <p class="lede">It casts parallel rays through each character&rsquo;s outline at 36 angles and records where each ray crosses ink. When two characters cross in the same places at every angle, at the same size and on the same baseline, a reader will take one for the other. <a href="https://github.com/paultendo/confusable-vision/blob/main/docs/metric-calibration.md">How the method was tested</a></p>
+    <p class="lede">It casts parallel rays through each character&rsquo;s outline at 36 angles and records where each ray crosses ink. When two characters cross in the same places at every angle, at the same size and on the same baseline, most readers will take one for the other. <a href="https://github.com/paultendo/confusable-vision/blob/main/docs/metric-calibration.md">How the method was tested</a></p>
     <p class="lede">Below, your browser draws the letter o and the small capital <span class="swapch">&#x1D0F;</span> and compares them one angle at a time.</p>
   </div></div>
   <div class="raylab">
@@ -136,7 +166,7 @@ function homeFonts(data: LandingData): string {
     <p class="lede">Whether a swap shows depends on the font. In Arial, <span class="swapch">&#x1D0F;</span> and o are identical; in Georgia they are not. When a font doesn&rsquo;t include a character, the browser draws it with another font, and that substitute can be just as convincing. Each card is graded from what your browser actually draws.</p>
   </div></div>
   <div class="specimens">${cards}</div>
-  <p class="footnote">The grade is the share of ink the two glyphs have in common when drawn at the same size on the same baseline. Where the font includes <span class="swapch">&#x1D0F;</span>, the card also gives the published measurement for that font. 448 of the 857 measured pairs are lookalikes only because the browser substitutes a font like this.</p>
+  <p class="footnote">The grade is the share of ink the two glyphs have in common when drawn at the same size on the same baseline. Where the font includes <span class="swapch">&#x1D0F;</span>, the card also gives the published measurement for that font. 448 of the 857 measured pairs are alike only when one character is drawn in a substitute font, as here.</p>
 </section>`;
 }
 
@@ -153,10 +183,10 @@ function homeRegistries(data: LandingData): string {
   <div class="sec-head"><div>
     <h2>Can someone register it?</h2>
     <p class="lede">Each registry decides which characters it accepts in a domain name, so a lookalike that .com would sell may be refused by .de. d0ma1n checks every result against the rules of its own TLD. These are the verdicts for g<span class="swapch">&#x1D0F;</span>ogle at twelve of them.</p>
-    <p class="lede"><span class="swapch">&#x1D0F;</span> is a Latin letter, so g<span class="swapch">&#x1D0F;</span>ogle is written in a single script. Registries refuse labels that mix scripts, such as google with a Cyrillic &#x43E;, and d0ma1n applies the same rule.</p>
+    <p class="lede"><span class="swapch">&#x1D0F;</span> is a Latin letter, so g<span class="swapch">&#x1D0F;</span>ogle is written in a single script. Most registries refuse labels that mix scripts, such as google with a Cyrillic &#x43E;, and d0ma1n applies the same rule.</p>
   </div></div>
   <div class="board">${tiles}</div>
-  <div class="board-note"><span class="seg" data-glass="6" data-glass-id="lg-pair"><span><b>${data.stats.tlds.toLocaleString("en-GB")}</b> TLDs with known rules</span><span>IANA IDN tables</span><span>ICANN registry agreement</span><span>Country-code registry policies</span></span></div>
+  <div class="board-note"><span class="seg"><span><b>${data.stats.tlds.toLocaleString("en-GB")}</b> TLDs, ${(data.stats.tlds - data.stats.assumed).toLocaleString("en-GB")} from published rules</span><span>IANA IDN tables</span><span>ICANN registry agreement</span><span>Country-code registry policies</span></span></div>
 </section>`;
 }
 
@@ -165,7 +195,8 @@ function homeReport(): string {
 <section class="sec reveal-up" id="report">
   <div class="sec-head"><div>
     <h2>The report</h2>
-    <p class="lede">A scan lists registered lookalikes first, including any with mail servers, since those can send phishing email. Next come the ones still available to register, then the ones no registry would accept. Each result names the swapped character and the font in which it is hardest to spot.</p>
+    <p class="lede">A scan lists registered lookalikes first, including any with mail servers, since those can send phishing email. Next come the ones still available to register, then the ones no registry would accept. Each result names the swapped character and, where it was measured, the font in which it is hardest to spot.</p>
+    <p class="lede">Open tools such as <a href="https://github.com/elceef/dnstwist">dnstwist</a> can already list lookalikes of any domain. What d0ma1n adds is which of them a reader would fall for, which a registry would sell, and who holds the ones already taken.</p>
   </div></div>
   <div class="window">
     <div class="window-bar" data-glass="8"><i></i><i></i><i></i><span class="window-url">d0ma1n.app/scan/paypal.com</span></div>
@@ -183,11 +214,11 @@ function homeNumbers(data: LandingData): string {
     <p class="lede">d0ma1n and its data are open source, built by <a href="https://paultendo.github.io">Paul Wood FRSA</a> (<a href="https://github.com/paultendo">@paultendo</a>). confusable-vision measures which characters look alike, namespace-guard packages those measurements as a library, and d0ma1n adds registry rules and DNS checks.</p>
   </div></div>
   <div class="numbers">
-    <div class="num"><div class="num-v">857</div><div class="num-k">lookalike pairs, measured at the size characters appear in text and checked against pairs with known answers</div>
+    <div class="num"><div class="num-v">857</div><div class="num-k">lookalike pairs, measured at the size characters appear in text and checked against pairs with known answers. The 322 that pass the release&rsquo;s thresholds score every result.</div>
       <div class="num-src"><span class="seg"><a href="https://github.com/paultendo/confusable-vision">confusable-vision</a><span>CC-BY-4.0</span></span></div></div>
     <div class="num"><div class="num-v">${data.stats.fonts}</div><div class="num-k">fonts with their own scores, so a report can name the font in which a lookalike is hardest to spot</div>
       <div class="num-src"><span class="seg"><a href="https://www.npmjs.com/package/namespace-guard">namespace-guard</a><span>MIT</span></span></div></div>
-    <div class="num"><div class="num-v">${data.stats.tlds.toLocaleString("en-GB")}</div><div class="num-k">TLDs whose registry rules are checked for every result</div>
+    <div class="num"><div class="num-v">${data.stats.tlds.toLocaleString("en-GB")}</div><div class="num-k">TLDs whose registry rules are checked for every result: ${(data.stats.tlds - data.stats.assumed).toLocaleString("en-GB")} from published tables and policies, and ${data.stats.assumed} country codes with no published policy, treated as ASCII-only</div>
       <div class="num-src"><span class="seg"><a href="https://github.com/paultendo/d0ma1n">d0ma1n</a><span>MIT</span></span></div></div>
   </div>
 </section>`;
@@ -512,6 +543,8 @@ const STYLES = `<style>
   .danger-high { background: color-mix(in srgb, var(--danger-high) 16%, transparent); color: var(--danger-high); }
   .danger-mid { background: color-mix(in srgb, var(--danger-mid) 16%, transparent); color: var(--danger-mid); }
   .danger-low { background: color-mix(in srgb, var(--danger-low) 16%, transparent); color: var(--danger-low); }
+  .nowrap { white-space: nowrap; }
+  .danger-badge.unmeasured { background: var(--bg-soft); color: var(--text-dim); font-weight: 500; white-space: nowrap; }
 
   .threat-active {
     display: inline-block;
@@ -862,6 +895,20 @@ const STYLES = `<style>
 
   /* Sections */
   .sec { padding: 6.5rem 0 1rem; }
+
+  /* Where a lookalike is caught, and where it reads as written */
+  .surfaces { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; align-items: stretch; }
+  .surface { margin: 0; display: grid; grid-template-rows: auto 1fr auto; gap: 0.9rem; background: #fff; border-radius: 12px; padding: 1.2rem 1.3rem 1.3rem;
+    box-shadow: 0 16px 32px -12px rgba(50, 50, 93, 0.16), 0 4px 10px -4px rgba(0, 0, 0, 0.08); }
+  .surface-k { font-size: 0.9rem; font-weight: 500; color: var(--text-dim); }
+  .surface-v { font-size: 0.92rem; font-weight: 500; color: var(--danger-high); }
+  .surface-v.caught { color: var(--text-dim); }
+  .mock-bar { align-self: center; padding: 0.6rem 1rem; border-radius: 9999px; background: var(--bg-soft); font-size: 0.95rem; color: var(--text); }
+  .mock-mail, .mock-chat { align-self: center; font-size: 0.98rem; line-height: 1.5; color: var(--text); }
+  .mock-from { font-weight: 600; margin-bottom: 0.25rem; }
+  .mock-bubble { display: inline-block; padding: 0.65rem 0.9rem; border-radius: 16px 16px 16px 4px; background: var(--bg-soft); }
+  .mock-link { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; font-family: var(--font-specimen); }
+  @media (max-width: 768px) { .surfaces { grid-template-columns: 1fr; } }
   .sec-head { margin-bottom: 2.75rem; max-width: 52rem; }
   .sec-head h2 { font-weight: 400; font-size: clamp(1.9rem, 3.6vw, 3rem); line-height: 1.1; letter-spacing: -0.03em; text-wrap: balance; color: var(--text); }
   .sec-head h2 em { font-style: normal; color: var(--accent); }
@@ -1226,6 +1273,12 @@ function renderResults(data, container) {
   html += '<div class="results-meta"><span class="seg">' + counts.join('') + '</span></div>';
   html += '<p class="explainer">Each lookalike swaps a letter of your domain for a different Unicode character that looks almost the same. ';
   html += 'The swapped letter is <mark class="diff">highlighted</mark>, with your real domain underneath for comparison.</p>';
+  // How many would read as written even in Chrome's address bar: the answer to "doesn't the browser catch these?"
+  const asWritten = data.variants.filter(v => v.policy && v.policy.surfaces && v.policy.surfaces.chromium === 'unicode').length;
+  if (data.variants.length) html += '<p class="explainer">' + (asWritten
+    ? asWritten + ' of these ' + (asWritten === 1 ? 'shows' : 'show') + ' as written in Chrome&rsquo;s address bar, unless ' + escHtml(data.original) + ' is on Chrome&rsquo;s list of popular sites. '
+    : 'Chrome&rsquo;s address bar shows all of these in their xn-- form. ') +
+    'In an email or a chat message, a link reads however the sender typed it, and some camera apps show a QR code&rsquo;s address as written.</p>';
   html += '</div>';
 
   if (active.length > 0) {
@@ -1269,7 +1322,7 @@ function renderResults(data, container) {
     html += renderVariantTable(blocked, data.original);
   }
 
-  html += '<p class="legend"><strong>Similarity</strong>: how alike the lookalike and the real domain look, in the font where they are closest (named under the percentage). ';
+  html += '<p class="legend"><strong>Similarity</strong>: the share of text fonts in which the swapped character passes for the original, from confusable-vision&rsquo;s measurements; the font named under it is where the two are closest. Pairs that only Unicode&rsquo;s confusables list gives were never measured, and say so. ';
   html += '<strong>Swapped in</strong>: where the replacement character comes from in Unicode, as its script and block. None of them is the ordinary letter it imitates, even when the script is Latin. ';
   html += 'The <span class="punycode">xn--</span> form under each lookalike is how it is actually registered and how it appears in DNS, certificates and blocklists.</p>';
 
@@ -1341,8 +1394,12 @@ function renderVariantTable(variants, original) {
     html += '<div class="domain-original"' + fontStyle + '>' + markDiff(original, v.domain) + '</div>';
     html += '<div class="swaps">' + swaps.join('') + '</div>';
     html += '<div class="punycode">' + escHtml(v.punycode) + '</div></td>';
-    html += '<td><span class="danger-badge ' + dangerClass + '">' + dangerPct + '%</span>';
-    if (v.bestFont) html += '<div class="font-label">in ' + escHtml(v.bestFont) + '</div>';
+    // A pair only in Unicode's confusables list was never measured: say so rather than show its default score
+    if (v.substitutions.some(s => s.measured === false)) html += '<td><span class="danger-badge unmeasured">Not measured</span><div class="font-label">Unicode lists it</div>';
+    else {
+      html += '<td><span class="danger-badge ' + dangerClass + '">' + dangerPct + '%</span>';
+      if (v.bestFont) html += '<div class="font-label">closest in ' + escHtml(v.bestFont) + '</div>';
+    }
     html += '</td>';
     html += '<td>' + kinds.map(k => '<span class="seg tag">' + k.map(p => '<span>' + escHtml(p) + '</span>').join('') + '</span>').join(' ') + '</td>';
     html += '<td>' + status + '</td>';
@@ -1491,8 +1548,8 @@ const HOME_SCRIPT = `<script>
       var info = INFO.find(function (x) { return x.real === p[0] && x.fake === p[1]; });
       if (!label) return;
       if (!info) { label.classList.remove('on'); return; }
-      label.innerHTML = '<span class="seg"><span><b>' + escHtml(info.real) + '</b> and <b class="fk">' + escHtml(info.fake) + '</b> <span class="mono">' + escHtml(info.codepoint) + '</span></span>' +
-        '<span>' + (info.alike >= 95 ? 'alike in almost every text font' : 'alike in ' + info.alike + '% of text fonts') + '</span></span>';
+      label.innerHTML = '<span class="seg" data-glass="6" data-glass-id="lg-pair"><span><b>' + escHtml(info.real) + '</b> and <b class="fk">' + escHtml(info.fake) + '</b> <span class="mono">' + escHtml(info.codepoint) + '</span></span>' +
+        '<span>' + (info.alike >= 95 ? 'alike in every text font that has both' : 'alike in ' + info.alike + '% of text fonts that have both') + '</span></span>';
       label.classList.add('on');
       if (window.glassify) window.glassify(label);
     }

@@ -27,6 +27,8 @@ export type Substitution = {
   stableDanger: number;
   /** Whether this char is IDNA PVALID. */
   idnaPvalid: boolean;
+  /** False when the pair comes only from Unicode's confusables list and was never measured: its scores are a default. */
+  measured?: boolean;
 };
 
 /** DNS resolution result for a domain variant. */
@@ -120,6 +122,8 @@ export type ConfusableSubstitute = {
   idnaPvalid: boolean;
   /** Whether this substitute is from a different script than the prototype. */
   crossScript?: boolean;
+  /** False when the pair comes only from Unicode's confusables list and was never measured: its scores are a default. */
+  measured?: boolean;
 };
 
 /** Reverse map: ASCII prototype to its confusable substitutes, sorted by danger. */

@@ -136,6 +136,7 @@ export function reverseScan(domain: string): ReverseScanResult {
         danger: w?.danger ?? 0.5,
         stableDanger: w?.stableDanger ?? 0.5,
         idnaPvalid: w?.idnaPvalid ?? false,
+        measured: !!w,
       });
 
       canonicalChars.push(ascii);

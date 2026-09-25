@@ -240,6 +240,7 @@ function makeSubstitution(
     danger: sub.danger,
     stableDanger: sub.stableDanger,
     idnaPvalid: sub.idnaPvalid,
+    measured: sub.measured,
   };
 }
 

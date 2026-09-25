@@ -35,7 +35,7 @@ export function renderLandingPage(data: LandingData): string {
 </head>
 <body class="home">
   <div class="container">
-    <header class="topbar topbar-float"><div class="bar">
+    <header class="topbar topbar-float"><div class="bar" data-glass="9">
       <a href="/" class="logo">d<span>0</span>ma<span>1</span>n</a>
       <nav aria-label="Sections">
         <a href="#method">Method</a><a href="#fonts">Fonts</a><a href="#registries">Registries</a><a href="#report">Report</a>
@@ -43,13 +43,7 @@ export function renderLandingPage(data: LandingData): string {
         <a href="#specimen" class="pill" onclick="scanFromTop(); return false;">Scan a domain</a>
       </nav>
     </div></header>
-    <svg class="lg-defs" width="0" height="0" aria-hidden="true" focusable="false">
-      <filter id="lg" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
-        <feImage id="lg-map" x="0" y="0" width="1" height="1" preserveAspectRatio="none" result="map"/>
-        <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="frost"/>
-        <feDisplacementMap in="frost" in2="map" scale="24" xChannelSelector="R" yChannelSelector="G"/>
-      </filter>
-    </svg>
+    <svg class="lg-defs" width="0" height="0" aria-hidden="true" focusable="false"></svg>
     ${homeSpecimen()}
     ${RESULTS_CONTAINER}
     ${homeMethod()}
@@ -59,7 +53,7 @@ export function renderLandingPage(data: LandingData): string {
     ${homeNumbers(data)}
     <section class="closing">
       <h2>Check your own domain</h2>
-      <button type="button" onclick="scanFromTop()">Scan a domain</button>
+      <button type="button" onclick="scanFromTop()" data-glass="10">Scan a domain</button>
     </section>
     ${FOOTER}
   </div>
@@ -77,8 +71,8 @@ function homeSpecimen(): string {
   <div class="hero-pair" aria-hidden="true"></div>
   <h1 class="headline">Which one is the real <em id="brand">google.com</em>?</h1>
   <div class="plates" id="plates">
-    <button type="button" class="plate" data-side="0"><span class="plate-tag">A</span><span class="plate-stamp"></span><span class="plate-domain" id="plate-0"></span></button>
-    <button type="button" class="plate" data-side="1"><span class="plate-tag">B</span><span class="plate-stamp"></span><span class="plate-domain" id="plate-1"></span></button>
+    <button type="button" class="plate" data-side="0" data-glass="12"><span class="plate-tag">A</span><span class="plate-stamp"></span><span class="plate-domain" id="plate-0"></span></button>
+    <button type="button" class="plate" data-side="1" data-glass="12"><span class="plate-tag">B</span><span class="plate-stamp"></span><span class="plate-domain" id="plate-1"></span></button>
   </div>
   <div class="verdict" id="verdict" aria-live="polite"></div>
   <div class="try">
@@ -162,7 +156,7 @@ function homeRegistries(data: LandingData): string {
     <p class="lede"><span class="swapch">&#x1D0F;</span> is a Latin letter, so g<span class="swapch">&#x1D0F;</span>ogle is written in a single script. Registries refuse labels that mix scripts, such as google with a Cyrillic &#x43E;, and d0ma1n applies the same rule.</p>
   </div></div>
   <div class="board">${tiles}</div>
-  <div class="board-note"><span class="seg"><span><b>${data.stats.tlds.toLocaleString("en-GB")}</b> TLDs with known rules</span><span>IANA IDN tables</span><span>ICANN registry agreement</span><span>Country-code registry policies</span></span></div>
+  <div class="board-note"><span class="seg" data-glass="6" data-glass-id="lg-pair"><span><b>${data.stats.tlds.toLocaleString("en-GB")}</b> TLDs with known rules</span><span>IANA IDN tables</span><span>ICANN registry agreement</span><span>Country-code registry policies</span></span></div>
 </section>`;
 }
 
@@ -661,13 +655,34 @@ const STYLES = `<style>
       margin 0.5s cubic-bezier(0.22, 1, 0.36, 1), padding 0.5s cubic-bezier(0.22, 1, 0.36, 1);
   }
   .topbar-float.docked .bar {
-    margin: 0 -0.9rem; padding: 0.5rem 0.5rem 0.5rem 0.9rem; background: rgba(255, 255, 255, 0.5);
+    margin: 0 -0.9rem; padding: 0.5rem 0.5rem 0.5rem 0.9rem; background: rgba(255, 255, 255, 0.72);
     -webkit-backdrop-filter: blur(12px) saturate(1.6); backdrop-filter: blur(12px) saturate(1.6);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.6),
       inset 0 7px 10px -9px rgba(11, 27, 51, 0.12), inset 0 -1px 0 rgba(11, 27, 51, 0.05),
       0 12px 32px -12px rgba(50, 50, 93, 0.28), 0 2px 6px -2px rgba(0, 0, 0, 0.08);
   }
-  .lg-ok .topbar-float.docked .bar { background: rgba(255, 255, 255, 0.18); backdrop-filter: url(#lg) saturate(1.6); }
+  .lg-ok .topbar-float.docked .bar { background: rgba(255, 255, 255, 0.42); }
+  .lg-ok .topbar-float:not(.docked) .bar { backdrop-filter: none; }
+
+  /* Glass surfaces: each [data-glass] element gets its own displacement map (built in HOME_SCRIPT, sized to it), so
+     what passes under its rim bends, with a faint prism fringe. Chromium only; elsewhere they keep their own look. */
+  .lg-ok [data-glass] { backdrop-filter: var(--lg) saturate(1.5); }
+  .lg-ok .plate {
+    background: rgba(255, 255, 255, 0.6);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.55),
+      0 30px 60px -12px rgba(50, 50, 93, 0.22), 0 18px 36px -18px rgba(0, 0, 0, 0.25);
+  }
+  .lg-ok .plate:hover:not([disabled]) {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.55),
+      0 40px 70px -14px rgba(50, 50, 93, 0.3), 0 20px 40px -20px rgba(0, 0, 0, 0.3);
+  }
+  .lg-ok .hero-pair .seg { background: rgba(255, 255, 255, 0.5); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 6px 18px -8px rgba(50, 50, 93, 0.25); }
+  .lg-ok .closing button {
+    background: rgba(255, 255, 255, 0.14); color: #fff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.25), 0 12px 28px -12px rgba(11, 27, 51, 0.5);
+    transition: background 0.2s;
+  }
+  .lg-ok .closing button:hover { background: rgba(255, 255, 255, 0.24); }
   /* A soft white core keeps the links legible over anything, and leaves the rim clear so the bending shows */
   .topbar-float .bar::before {
     content: ""; position: absolute; inset: 7px 12px; z-index: -1; border-radius: inherit; background: rgba(255, 255, 255, 0.88);
@@ -886,7 +901,14 @@ const STYLES = `<style>
   .num-src a { color: var(--accent); text-decoration: none; }
 
   /* Closing: a blue slab */
-  .closing { margin: 6.5rem 0 4rem; padding: 4.5rem 3.5rem; border-radius: 24px; background: var(--accent); color: #fff; }
+  .closing { margin: 6.5rem 0 4rem; padding: 4.5rem 3.5rem; border-radius: 24px; background: var(--accent); color: #fff; position: relative; overflow: hidden; }
+  /* Faint parallel rays behind the panel, strongest near the button, for its glass to bend */
+  .closing::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(118deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 13px);
+    -webkit-mask-image: radial-gradient(ellipse 60% 90% at 20% 85%, #000, transparent 75%); mask-image: radial-gradient(ellipse 60% 90% at 20% 85%, #000, transparent 75%);
+  }
+  .closing > * { position: relative; }
   .closing h2 { text-wrap: balance; font-weight: 400; font-size: clamp(2.2rem, 5vw, 3.8rem); line-height: 1.05; letter-spacing: -0.035em; }
   .closing button { margin-top: 1.75rem; font-family: var(--font-body); font-size: 1.05rem; font-weight: 500;
     background: #fff; color: var(--accent); border: 0; padding: 0.85rem 1.6rem; border-radius: 9999px; cursor: pointer; }
@@ -1189,43 +1211,83 @@ const HOME_SCRIPT = `<script>
   var data = window.HOME;
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // ---------- Glass bar ----------
+  // ---------- Glass ----------
   (function () {
-    var top = document.querySelector('.topbar-float'), bar = top && top.querySelector('.bar'), map = document.getElementById('lg-map');
-    if (!bar) return;
+    var top = document.querySelector('.topbar-float');
+    if (top) {
+      var onScroll = function () { top.classList.toggle('docked', window.scrollY > 24); };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+    }
     var brands = (navigator.userAgentData && navigator.userAgentData.brands) || [];
     var chromium = brands.some(function (b) { return /Chromium/.test(b.brand); });
-    if (chromium && map) document.documentElement.classList.add('lg-ok');
-    function onScroll() { top.classList.toggle('docked', window.scrollY > 24); }
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-    if (!chromium || !map) return;
-    // A displacement map the size of the bar: neutral grey in the middle; in a band along the rim each pixel points
-    // inwards along the rim's normal, so what lies under the edge is drawn in from further in and bends round it.
-    // The outermost pixel is left unbent, so the edge itself stays clean.
-    var built = '';
-    function build() {
-      var w = Math.round(bar.offsetWidth), h = Math.round(bar.offsetHeight);
-      if (!w || !h || built === w + 'x' + h) return;
-      built = w + 'x' + h;
-      var c = document.createElement('canvas'); c.width = w; c.height = h;
-      var g = c.getContext('2d'), img = g.createImageData(w, h), px = img.data;
-      var r = h / 2, ax = w / 2 - r, ay = h / 2 - r, BAND = 9;
-      for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
-        var p0 = x + 0.5 - w / 2, p1 = y + 0.5 - h / 2, qx = Math.abs(p0) - ax, qy = Math.abs(p1) - ay;
-        var ox = Math.max(qx, 0), oy = Math.max(qy, 0), ol = Math.hypot(ox, oy);
-        var d = ol + Math.min(Math.max(qx, qy), 0) - r, nx, ny;
-        if (qx > 0 && qy > 0) { nx = ox / ol * Math.sign(p0); ny = oy / ol * Math.sign(p1); }
-        else if (qx > qy) { nx = Math.sign(p0); ny = 0; } else { nx = 0; ny = Math.sign(p1); }
-        var k = Math.exp(Math.min(0, d) / BAND * 2.2) * Math.min(1, Math.max(0, -d - 0.5)), i = (y * w + x) * 4;
-        px[i] = 128 - 127 * nx * k; px[i + 1] = 128 - 127 * ny * k; px[i + 2] = 128; px[i + 3] = 255;
-      }
-      g.putImageData(img, 0, 0);
-      map.setAttribute('width', w); map.setAttribute('height', h);
-      map.setAttribute('href', c.toDataURL());
+    var defs = document.querySelector('.lg-defs');
+    if (!chromium || !defs || !window.ResizeObserver) return;
+    document.documentElement.classList.add('lg-ok');
+    var NS = 'http://www.w3.org/2000/svg', count = 0;
+    function el(tag, attrs, parent) {
+      var e = document.createElementNS(NS, tag);
+      Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+      parent.appendChild(e);
+      return e;
     }
-    build();
-    if (window.ResizeObserver) new ResizeObserver(build).observe(bar);
+    // Glass bends blue a little more than red. Each channel is displaced by its own amount, and half of that split is
+    // mixed back over the unsplit image, so the fringe is a hint at the rim rather than a coloured outline.
+    var SCALE = 16, SPREAD = 0.1, PRISM = 0.5;
+    function channel(f, from, row, name) {
+      el('feColorMatrix', { 'in': from, type: 'matrix', values: row + ' 0 0 0 1 0', result: name }, f);
+    }
+    function glass(node) {
+      // A surface that is re-rendered keeps one filter under a fixed id rather than adding another each time
+      var id = node.getAttribute('data-glass-id') || 'lg-' + (count++), band = +node.getAttribute('data-glass') || 9;
+      var old = document.getElementById(id);
+      if (old) old.remove();
+      var f = el('filter', { id: id, x: 0, y: 0, width: '100%', height: '100%', 'color-interpolation-filters': 'sRGB' }, defs);
+      var map = el('feImage', { x: 0, y: 0, width: 1, height: 1, preserveAspectRatio: 'none', result: 'map' }, f);
+      el('feGaussianBlur', { 'in': 'SourceGraphic', stdDeviation: 1, result: 'frost' }, f);
+      [['mid', 1], ['dr', 1 - SPREAD], ['db', 1 + SPREAD]].forEach(function (d) {
+        el('feDisplacementMap', { 'in': 'frost', in2: 'map', scale: SCALE * d[1], xChannelSelector: 'R', yChannelSelector: 'G', result: d[0] }, f);
+      });
+      channel(f, 'dr', '1 0 0 0 0 0 0 0 0 0 0 0 0 0 0', 'r');
+      channel(f, 'mid', '0 0 0 0 0 0 1 0 0 0 0 0 0 0 0', 'g');
+      channel(f, 'db', '0 0 0 0 0 0 0 0 0 0 0 0 1 0 0', 'b');
+      el('feBlend', { 'in': 'r', in2: 'g', mode: 'screen', result: 'rg' }, f);
+      el('feBlend', { 'in': 'rg', in2: 'b', mode: 'screen', result: 'split' }, f);
+      el('feComposite', { 'in': 'split', in2: 'mid', operator: 'arithmetic', k1: 0, k2: PRISM, k3: 1 - PRISM, k4: 0 }, f);
+      // A displacement map the size of the surface: neutral grey in the middle; in a band along the rim each pixel
+      // points inwards along the rim's normal, so what lies under the edge is drawn in from further in and bends
+      // round it. The outermost pixel is left unbent, so the edge itself stays clean.
+      var built = '', queued = false;
+      function build() {
+        queued = false;
+        var w = Math.round(node.offsetWidth), h = Math.round(node.offsetHeight);
+        var r = Math.min(parseFloat(getComputedStyle(node).borderTopLeftRadius) || 0, w / 2, h / 2);
+        if (!w || !h || built === w + 'x' + h + 'x' + r) return;
+        built = w + 'x' + h + 'x' + r;
+        var c = document.createElement('canvas'); c.width = w; c.height = h;
+        var g = c.getContext('2d'), img = g.createImageData(w, h), px = img.data;
+        var ax = w / 2 - r, ay = h / 2 - r;
+        for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+          var p0 = x + 0.5 - w / 2, p1 = y + 0.5 - h / 2, qx = Math.abs(p0) - ax, qy = Math.abs(p1) - ay;
+          var ox = Math.max(qx, 0), oy = Math.max(qy, 0), ol = Math.hypot(ox, oy);
+          var d = ol + Math.min(Math.max(qx, qy), 0) - r, nx, ny;
+          if (qx > 0 && qy > 0) { nx = ox / ol * Math.sign(p0); ny = oy / ol * Math.sign(p1); }
+          else if (qx > qy) { nx = Math.sign(p0); ny = 0; } else { nx = 0; ny = Math.sign(p1); }
+          var k = Math.exp(Math.min(0, d) / band * 2.2) * Math.min(1, Math.max(0, -d - 0.5)), i = (y * w + x) * 4;
+          px[i] = 128 - 127 * nx * k; px[i + 1] = 128 - 127 * ny * k; px[i + 2] = 128; px[i + 3] = 255;
+        }
+        g.putImageData(img, 0, 0);
+        map.setAttribute('width', w); map.setAttribute('height', h);
+        map.setAttribute('href', c.toDataURL());
+        node.style.setProperty('--lg', 'url(#' + id + ')');
+      }
+      build();
+      new ResizeObserver(function () { if (!queued) { queued = true; requestAnimationFrame(build); } }).observe(node);
+    }
+    window.glassify = function (root) {
+      (root || document).querySelectorAll('[data-glass]:not([data-glassed])').forEach(function (n) { n.setAttribute('data-glassed', ''); glass(n); });
+    };
+    window.glassify();
   })();
 
   // ---------- Specimen: spot the fake ----------
@@ -1333,6 +1395,7 @@ const HOME_SCRIPT = `<script>
       label.innerHTML = '<span class="seg"><span><b>' + escHtml(info.real) + '</b> and <b class="fk">' + escHtml(info.fake) + '</b> <span class="mono">' + escHtml(info.codepoint) + '</span></span>' +
         '<span>' + (info.alike >= 95 ? 'alike in almost every text font' : 'alike in ' + info.alike + '% of text fonts') + '</span></span>';
       label.classList.add('on');
+      if (window.glassify) window.glassify(label);
     }
     var pair = PAIRS[0], cur = null, tween = null, TWEEN = 1.6; // seconds for one glyph to become the next
     var start = performance.now(), visible = true, raf = 0, geo = null;

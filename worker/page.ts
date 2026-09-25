@@ -428,6 +428,8 @@ const STYLES = `<style>
 
   /* Results */
   #results { margin: 2rem 0 4rem; scroll-margin-top: 1.5rem; }
+  /* On the homepage the docked glass bar covers the top of the window: land the results just below it */
+  .home #results { scroll-margin-top: calc(var(--bar-h, 80px) + 1.25rem); }
 
   .results-meta {
     font-size: 0.875rem;
@@ -730,7 +732,10 @@ const STYLES = `<style>
   }
   .hero-pair.on { opacity: 1; transform: none; }
   .hero-pair .seg { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-radius: 9999px; }
-  .hero-pair b { color: #1f5af0; font-family: var(--font-specimen); font-weight: 400; font-size: 1.05rem; }
+  .hero-pair b { color: #1f5af0; font-family: var(--font-specimen); font-weight: 400; font-size: 1.05rem; line-height: 1; }
+  /* The glyphs are set larger than the text beside them: centre each part so both sit on the same line */
+  .hero-pair .seg { align-items: stretch; }
+  .hero-pair .seg > * { display: inline-flex; align-items: center; gap: 0.3em; }
   .hero-pair b.fk { color: #d92d20; }
   @media (max-width: 1024px) { .hero-pair { display: none; } }
   .specimen::before {
@@ -1073,6 +1078,8 @@ const SCRIPT = `<script>
     var top = document.querySelector('.topbar-float');
     if (top) {
       var onScroll = function () { top.classList.toggle('docked', window.scrollY > 24); };
+      // Anything scrolled to lands below the bar
+      document.documentElement.style.setProperty('--bar-h', Math.round(top.offsetHeight) + 'px');
       window.addEventListener('scroll', onScroll, { passive: true });
       onScroll();
     }

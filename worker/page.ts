@@ -1143,7 +1143,7 @@ const HOME_SCRIPT = `<script>
       p.classList.remove('is-fake', 'is-real');
       var dom = i === fakeSide ? ex.fake : ex.real;
       p.querySelector('.plate-domain').innerHTML = spans(dom);
-      p.setAttribute('aria-label', 'Plate ' + (i ? 'B' : 'A') + ': ' + dom);
+      p.setAttribute('aria-label', (i ? 'B' : 'A') + ': ' + dom);
       var old = p.querySelector('.loupe'); if (old) old.remove();
       p.style.animation = 'none'; void p.offsetWidth; p.style.animation = '';
     });
@@ -1174,7 +1174,7 @@ const HOME_SCRIPT = `<script>
     var right = side !== fakeSide;
     var letter = fakeSide ? 'B' : 'A';
     verdict.innerHTML =
-      '<p class="verdict-line"><strong>' + (right ? 'Correct: plate ' + letter + ' is the fake.' : 'Plate ' + letter + ' is the fake.') + '</strong> ' +
+      '<p class="verdict-line"><strong>' + (right ? 'Correct: ' + letter + ' is the fake.' : letter + ' is the fake.') + '</strong> ' +
       'Its ' + ORDINALS[ex.index] + ' letter is not the letter ' + escHtml(ex.original) + ' but <span class="mono">' + escHtml(ex.codepoint) +
       '</span>, a ' + escHtml(ex.name.toLowerCase().replace(/^latin (small )?letter /, '')) + ', drawn the same way.</p>' +
       '<div class="evidence">' +

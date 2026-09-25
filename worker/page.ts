@@ -40,7 +40,7 @@ export function renderLandingPage(data: LandingData): string {
       <nav aria-label="Sections">
         <a href="#method">Method</a><a href="#fonts">Fonts</a><a href="#registries">Registries</a><a href="#report">Report</a>
         <a href="https://github.com/paultendo/d0ma1n">GitHub</a>
-        <a href="#specimen" class="pill" onclick="scanFromTop(); return false;">Scan a domain</a>
+        <a href="#specimen" class="pill" data-glass="8" onclick="scanFromTop(); return false;">Scan a domain</a>
       </nav>
     </div></header>
     <svg class="lg-defs" width="0" height="0" aria-hidden="true" focusable="false"></svg>
@@ -79,7 +79,7 @@ function homeSpecimen(): string {
     <p class="try-label">Try a domain</p>
     <form class="scan-form" action="javascript:void(0)" onsubmit="doScan()">
       <input type="text" id="domain-input" placeholder="yourcompany.com" autocomplete="off" spellcheck="false" aria-label="Domain to scan">
-      <button type="submit" id="scan-btn">Scan</button>
+      <button type="submit" id="scan-btn" data-glass="9">Scan</button>
     </form>
   </div>
 </section>`;
@@ -108,10 +108,10 @@ function homeMethod(): string {
       <figcaption><span class="mono">U+1D0F</span><span>Latin letter small capital o</span></figcaption></figure>
   </div>
   <div class="chips" role="group" aria-label="Font">
-    <button type="button" class="chip" data-font="Arial" aria-pressed="true">Arial</button>
-    <button type="button" class="chip" data-font="Times New Roman" aria-pressed="false">Times New Roman</button>
-    <button type="button" class="chip" data-font="Georgia" aria-pressed="false">Georgia</button>
-    <button type="button" class="chip" data-font="Verdana" aria-pressed="false">Verdana</button>
+    <button type="button" class="chip" data-glass="7" data-font="Arial" aria-pressed="true">Arial</button>
+    <button type="button" class="chip" data-glass="7" data-font="Times New Roman" aria-pressed="false">Times New Roman</button>
+    <button type="button" class="chip" data-glass="7" data-font="Georgia" aria-pressed="false">Georgia</button>
+    <button type="button" class="chip" data-glass="7" data-font="Verdana" aria-pressed="false">Verdana</button>
   </div>
   <p class="footnote">This demonstration uses 25 rays at one angle at a time. The published measurements use 50 rays at each of 36 angles, in every macOS system font and in Roboto, and test shape and size separately.</p>
 </section>`;
@@ -224,7 +224,7 @@ export function renderScanPage(result: ScanResult): string {
     <header class="scan-head">
       <form class="scan-form" action="javascript:void(0)" onsubmit="doScan()">
         <input type="text" id="domain-input" value="${escHtml(result.original)}" placeholder="yourcompany.com" autocomplete="off" spellcheck="false">
-        <button type="submit" id="scan-btn">Scan</button>
+        <button type="submit" id="scan-btn" data-glass="9">Scan</button>
       </form>
     </header>
     ${RESULTS_CONTAINER}
@@ -683,6 +683,42 @@ const STYLES = `<style>
     transition: background 0.2s;
   }
   .lg-ok .closing button:hover { background: rgba(255, 255, 255, 0.24); }
+
+  /* Buttons are glass. Actions are blue glass: a translucent blue body lit from above, a bright top edge and a darker
+     lower one. Secondary controls are clear glass. The look holds in every browser; Chromium also bends what passes
+     under the rim. */
+  .topbar nav a.pill, .scan-form button, .closing button {
+    backdrop-filter: blur(8px) saturate(1.6); -webkit-backdrop-filter: blur(8px) saturate(1.6);
+  }
+  .topbar nav a.pill, .scan-form button {
+    background: linear-gradient(180deg, rgba(66, 122, 255, 0.84), rgba(31, 90, 240, 0.9));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.16), inset 0 -1px 0 rgba(11, 27, 90, 0.28),
+      0 8px 20px -8px rgba(31, 90, 240, 0.6), 0 2px 4px -1px rgba(11, 27, 51, 0.12);
+    transition: background 0.2s, box-shadow 0.2s, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .topbar nav a.pill:hover, .scan-form button:hover:not(:disabled) {
+    background: linear-gradient(180deg, rgba(88, 140, 255, 0.86), rgba(40, 100, 250, 0.92));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(11, 27, 90, 0.28),
+      0 12px 26px -8px rgba(31, 90, 240, 0.65), 0 2px 4px -1px rgba(11, 27, 51, 0.12);
+  }
+  .topbar nav a.pill:active, .scan-form button:active:not(:disabled), .next:active, .closing button:active { transform: translateY(1px); }
+  .lg-ok .topbar nav a.pill, .lg-ok .scan-form button { background: linear-gradient(180deg, rgba(66, 122, 255, 0.76), rgba(31, 90, 240, 0.84)); }
+  .next {
+    background: rgba(255, 255, 255, 0.55); border-color: transparent;
+    backdrop-filter: blur(8px) saturate(1.6); -webkit-backdrop-filter: blur(8px) saturate(1.6);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(11, 27, 51, 0.08), inset 0 -1px 0 rgba(11, 27, 51, 0.06),
+      0 6px 16px -8px rgba(50, 50, 93, 0.3);
+    transition: background 0.15s, box-shadow 0.15s, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .next:hover { border-color: transparent; background: rgba(233, 240, 255, 0.7);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(31, 90, 240, 0.28), 0 8px 20px -8px rgba(31, 90, 240, 0.35); }
+  .chip {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04)); border-color: transparent;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 6px 14px -8px rgba(0, 0, 0, 0.5);
+  }
+  .chip:hover { background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.07)); }
+  .chip[aria-pressed="true"] { background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(233, 240, 255, 0.9));
+    box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 rgba(11, 27, 51, 0.12), 0 8px 18px -8px rgba(0, 0, 0, 0.55); }
   /* A soft white core keeps the links legible over anything, and leaves the rim clear so the bending shows */
   .topbar-float .bar::before {
     content: ""; position: absolute; inset: 7px 12px; z-index: -1; border-radius: inherit; background: rgba(255, 255, 255, 0.88);
@@ -767,15 +803,40 @@ const STYLES = `<style>
   }
   .revealed .loupe { transform: scale(1); opacity: 1; }
   .is-real .loupe { border-color: var(--border-strong); background: none; border-style: dashed; }
-  .verdict { min-height: 1.5rem; margin-top: 1.8rem; }
-  .verdict-line { font-size: 1.2rem; color: var(--text-dim); }
-  .verdict-line strong { color: var(--text); font-weight: 600; }
+  /* The verdict opens its own space on an ease-out, then its parts arrive one after another */
+  .verdict { display: grid; grid-template-rows: 0fr; margin-top: 1.8rem; transition: grid-template-rows 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
+  .revealed .verdict { grid-template-rows: 1fr; }
+  /* Room around the content for shadows, taken back with negative margins so the layout is unchanged */
+  .verdict-inner { min-height: 0; overflow: hidden; padding: 6px 24px 32px; margin: -6px -24px -32px; }
+  /* In order of weight: the answer, the one-line reason, the evidence, then the way on */
+  .verdict-head { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
+  .verdict-tag { font-size: 0.85rem; font-weight: 500; padding: 0.22rem 0.75rem; border-radius: 9999px; background: var(--accent-soft); color: var(--accent); }
+  .verdict-tag.wrong { background: var(--bg-soft); color: var(--text-dim); }
+  .verdict-title { margin: 0; font-size: clamp(1.6rem, 3vw, 2.1rem); font-weight: 400; line-height: 1.15; letter-spacing: -0.025em; color: var(--text); }
+  .verdict-line { margin-top: 0.55rem; max-width: 62ch; font-size: 1.1rem; line-height: 1.55; color: var(--text-dim); text-wrap: pretty; }
+  .verdict-actions { margin-top: 1.25rem; }
+  .verdict-head, .verdict-line, .verdict-actions { opacity: 0; transform: translateY(10px);
+    transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
+  .revealed .verdict-head, .revealed .verdict-line, .revealed .verdict-actions { opacity: 1; transform: none; }
+  .revealed .verdict-head { transition-delay: 0.08s; }
+  .revealed .verdict-line { transition-delay: 0.16s; }
+  .revealed .verdict-actions { transition-delay: 0.5s; }
   .evidence {
-    display: grid; grid-template-columns: auto 1fr auto; gap: 2rem; align-items: center; margin-top: 1.25rem;
+    display: grid; grid-template-columns: auto 1fr; gap: 2.75rem; align-items: center; margin-top: 1.5rem;
     background: var(--bg-soft); border-radius: 12px; padding: 1.5rem 1.75rem;
-    opacity: 0; transform: translateY(8px); transition: all 0.4s 0.2s;
+    opacity: 0; transform: translateY(16px);
+    transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1), transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
   }
-  .revealed .evidence { opacity: 1; transform: none; }
+  .revealed .evidence { opacity: 1; transform: none; transition-delay: 0.2s; }
+  .specimen .evidence > * { opacity: 0; transform: translateY(8px);
+    transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
+  .revealed .evidence > * { opacity: 1; transform: none; }
+  .revealed .evidence > :nth-child(1) { transition-delay: 0.32s; }
+  .revealed .evidence > :nth-child(2) { transition-delay: 0.4s; }
+
+  .specimen .evidence .g { transform: scale(0.9); transition: transform 0.7s cubic-bezier(0.34, 1.4, 0.64, 1); }
+  .revealed .evidence .g { transform: none; transition-delay: 0.36s; }
+  .revealed .evidence figure + figure .g { transition-delay: 0.46s; }
   .glyph-pair { display: flex; gap: 1rem; align-items: flex-end; }
   .glyph-pair figure { text-align: center; }
   .glyph-pair .g {
@@ -784,7 +845,7 @@ const STYLES = `<style>
   }
   .glyph-pair .g.fake { box-shadow: 0 0 0 2px var(--danger-high); }
   .glyph-pair figcaption { font-size: 0.85rem; color: var(--text-dim); margin-top: 0.45rem; }
-  .facts { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1.4rem; font-size: 0.98rem; }
+  .facts { display: grid; grid-template-columns: 9rem 1fr; gap: 0.45rem 1.4rem; font-size: 0.98rem; }
   .facts dt { color: var(--text-dim); }
   .facts dd { color: var(--text); }
   .facts dd .mono { font-size: 0.88rem; }
@@ -825,7 +886,8 @@ const STYLES = `<style>
   .raylab { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 1.75rem; align-items: center; }
   .raylab figure { background: #fff; border-radius: 12px; padding: 1rem; position: relative; }
   .raylab canvas { width: 100%; aspect-ratio: 1; display: block; }
-  .raylab figcaption { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-dim); margin-top: 0.6rem; }
+  .raylab figcaption { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; font-size: 0.85rem; color: var(--text-dim); margin-top: 0.6rem; }
+  .raylab figcaption span:last-child { text-align: right; text-wrap: balance; }
   .bars { display: flex; align-items: flex-end; gap: 2px; height: 42px; margin-top: 0.6rem; }
   .bars i { flex: 1; background: var(--ink); min-height: 2px; border-radius: 1px; transition: height 0.12s; }
   .raylab-mid { text-align: center; min-width: 11rem; font-variant-numeric: tabular-nums; }
@@ -925,6 +987,7 @@ const STYLES = `<style>
   @media (prefers-reduced-motion: reduce) {
     .hero-rays { transition: none; }
     .plate, .reveal-up, .reveal-up .tile, .evidence, .loupe, .plate-stamp, .stamp { animation: none !important; transition: none !important; opacity: 1; transform: none; }
+    .verdict, .verdict-head, .verdict-line, .verdict-actions, .specimen .evidence > *, .specimen .evidence .g { transition: none !important; opacity: 1; transform: none; }
   }
 
   /* Footer */
@@ -1000,6 +1063,96 @@ const FOOTER = `
 // --- Inline JS ---
 
 const SCRIPT = `<script>
+(function () {
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // ---------- Glass ----------
+  (function () {
+    var top = document.querySelector('.topbar-float');
+    if (top) {
+      var onScroll = function () { top.classList.toggle('docked', window.scrollY > 24); };
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+    }
+    var brands = (navigator.userAgentData && navigator.userAgentData.brands) || [];
+    var chromium = brands.some(function (b) { return /Chromium/.test(b.brand); });
+    if (!chromium || !window.ResizeObserver) return;
+    var NS0 = 'http://www.w3.org/2000/svg', defs = document.querySelector('.lg-defs');
+    if (!defs) {
+      defs = document.createElementNS(NS0, 'svg'); defs.setAttribute('class', 'lg-defs'); defs.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(defs);
+    }
+    document.documentElement.classList.add('lg-ok');
+    var NS = 'http://www.w3.org/2000/svg', count = 0;
+    function el(tag, attrs, parent) {
+      var e = document.createElementNS(NS, tag);
+      Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+      parent.appendChild(e);
+      return e;
+    }
+    // Glass bends blue a little more than red. Each channel is displaced by its own amount, and half of that split is
+    // mixed back over the unsplit image, so the fringe is a hint at the rim rather than a coloured outline.
+    var SCALE = 16, SPREAD = 0.1, PRISM = 0.5;
+    function channel(f, from, row, name) {
+      el('feColorMatrix', { 'in': from, type: 'matrix', values: row + ' 0 0 0 1 0', result: name }, f);
+    }
+    function glass(node) {
+      // A surface that is re-rendered keeps one filter under a fixed id rather than adding another each time
+      var id = node.getAttribute('data-glass-id') || 'lg-' + (count++), band = +node.getAttribute('data-glass') || 9;
+      var old = document.getElementById(id);
+      if (old) old.remove();
+      var f = el('filter', { id: id, x: 0, y: 0, width: '100%', height: '100%', 'color-interpolation-filters': 'sRGB' }, defs);
+      var map = el('feImage', { x: 0, y: 0, width: 1, height: 1, preserveAspectRatio: 'none', result: 'map' }, f);
+      el('feGaussianBlur', { 'in': 'SourceGraphic', stdDeviation: 1, result: 'frost' }, f);
+      [['mid', 1], ['dr', 1 - SPREAD], ['db', 1 + SPREAD]].forEach(function (d) {
+        el('feDisplacementMap', { 'in': 'frost', in2: 'map', scale: SCALE * d[1], xChannelSelector: 'R', yChannelSelector: 'G', result: d[0] }, f);
+      });
+      channel(f, 'dr', '1 0 0 0 0 0 0 0 0 0 0 0 0 0 0', 'r');
+      channel(f, 'mid', '0 0 0 0 0 0 1 0 0 0 0 0 0 0 0', 'g');
+      channel(f, 'db', '0 0 0 0 0 0 0 0 0 0 0 0 1 0 0', 'b');
+      el('feBlend', { 'in': 'r', in2: 'g', mode: 'screen', result: 'rg' }, f);
+      el('feBlend', { 'in': 'rg', in2: 'b', mode: 'screen', result: 'split' }, f);
+      el('feComposite', { 'in': 'split', in2: 'mid', operator: 'arithmetic', k1: 0, k2: PRISM, k3: 1 - PRISM, k4: 0 }, f);
+      // A displacement map the size of the surface: neutral grey in the middle; in a band along the rim each pixel
+      // points inwards along the rim's normal, so what lies under the edge is drawn in from further in and bends
+      // round it. The outermost pixel is left unbent, so the edge itself stays clean.
+      var built = '', queued = false;
+      function build() {
+        queued = false;
+        var w = Math.round(node.offsetWidth), h = Math.round(node.offsetHeight);
+        // Each corner keeps its own radius: a button joined to a field is only rounded on its outer side
+        var cs = getComputedStyle(node), rad = ['borderTopLeftRadius', 'borderTopRightRadius', 'borderBottomRightRadius', 'borderBottomLeftRadius']
+          .map(function (k) { return Math.min(parseFloat(cs[k]) || 0, w / 2, h / 2); });
+        if (!w || !h || built === w + 'x' + h + 'x' + rad.join()) return;
+        built = w + 'x' + h + 'x' + rad.join();
+        var c = document.createElement('canvas'); c.width = w; c.height = h;
+        var g = c.getContext('2d'), img = g.createImageData(w, h), px = img.data;
+        for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+          var p0 = x + 0.5 - w / 2, p1 = y + 0.5 - h / 2;
+          var r = p0 < 0 ? (p1 < 0 ? rad[0] : rad[3]) : (p1 < 0 ? rad[1] : rad[2]);
+          var qx = Math.abs(p0) - (w / 2 - r), qy = Math.abs(p1) - (h / 2 - r);
+          var ox = Math.max(qx, 0), oy = Math.max(qy, 0), ol = Math.hypot(ox, oy);
+          var d = ol + Math.min(Math.max(qx, qy), 0) - r, nx, ny;
+          if (qx > 0 && qy > 0) { nx = ox / ol * Math.sign(p0); ny = oy / ol * Math.sign(p1); }
+          else if (qx > qy) { nx = Math.sign(p0); ny = 0; } else { nx = 0; ny = Math.sign(p1); }
+          var k = Math.exp(Math.min(0, d) / band * 2.2) * Math.min(1, Math.max(0, -d - 0.5)), i = (y * w + x) * 4;
+          px[i] = 128 - 127 * nx * k; px[i + 1] = 128 - 127 * ny * k; px[i + 2] = 128; px[i + 3] = 255;
+        }
+        g.putImageData(img, 0, 0);
+        map.setAttribute('width', w); map.setAttribute('height', h);
+        map.setAttribute('href', c.toDataURL());
+        node.style.setProperty('--lg', 'url(#' + id + ')');
+      }
+      build();
+      new ResizeObserver(function () { if (!queued) { queued = true; requestAnimationFrame(build); } }).observe(node);
+    }
+    window.glassify = function (root) {
+      (root || document).querySelectorAll('[data-glass]:not([data-glassed])').forEach(function (n) { n.setAttribute('data-glassed', ''); glass(n); });
+    };
+    window.glassify();
+  })();
+
+})();
+
 async function doScan() {
   const input = document.getElementById('domain-input');
   const btn = document.getElementById('scan-btn');
@@ -1219,85 +1372,6 @@ const HOME_SCRIPT = `<script>
   var data = window.HOME;
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // ---------- Glass ----------
-  (function () {
-    var top = document.querySelector('.topbar-float');
-    if (top) {
-      var onScroll = function () { top.classList.toggle('docked', window.scrollY > 24); };
-      window.addEventListener('scroll', onScroll, { passive: true });
-      onScroll();
-    }
-    var brands = (navigator.userAgentData && navigator.userAgentData.brands) || [];
-    var chromium = brands.some(function (b) { return /Chromium/.test(b.brand); });
-    var defs = document.querySelector('.lg-defs');
-    if (!chromium || !defs || !window.ResizeObserver) return;
-    document.documentElement.classList.add('lg-ok');
-    var NS = 'http://www.w3.org/2000/svg', count = 0;
-    function el(tag, attrs, parent) {
-      var e = document.createElementNS(NS, tag);
-      Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
-      parent.appendChild(e);
-      return e;
-    }
-    // Glass bends blue a little more than red. Each channel is displaced by its own amount, and half of that split is
-    // mixed back over the unsplit image, so the fringe is a hint at the rim rather than a coloured outline.
-    var SCALE = 16, SPREAD = 0.1, PRISM = 0.5;
-    function channel(f, from, row, name) {
-      el('feColorMatrix', { 'in': from, type: 'matrix', values: row + ' 0 0 0 1 0', result: name }, f);
-    }
-    function glass(node) {
-      // A surface that is re-rendered keeps one filter under a fixed id rather than adding another each time
-      var id = node.getAttribute('data-glass-id') || 'lg-' + (count++), band = +node.getAttribute('data-glass') || 9;
-      var old = document.getElementById(id);
-      if (old) old.remove();
-      var f = el('filter', { id: id, x: 0, y: 0, width: '100%', height: '100%', 'color-interpolation-filters': 'sRGB' }, defs);
-      var map = el('feImage', { x: 0, y: 0, width: 1, height: 1, preserveAspectRatio: 'none', result: 'map' }, f);
-      el('feGaussianBlur', { 'in': 'SourceGraphic', stdDeviation: 1, result: 'frost' }, f);
-      [['mid', 1], ['dr', 1 - SPREAD], ['db', 1 + SPREAD]].forEach(function (d) {
-        el('feDisplacementMap', { 'in': 'frost', in2: 'map', scale: SCALE * d[1], xChannelSelector: 'R', yChannelSelector: 'G', result: d[0] }, f);
-      });
-      channel(f, 'dr', '1 0 0 0 0 0 0 0 0 0 0 0 0 0 0', 'r');
-      channel(f, 'mid', '0 0 0 0 0 0 1 0 0 0 0 0 0 0 0', 'g');
-      channel(f, 'db', '0 0 0 0 0 0 0 0 0 0 0 0 1 0 0', 'b');
-      el('feBlend', { 'in': 'r', in2: 'g', mode: 'screen', result: 'rg' }, f);
-      el('feBlend', { 'in': 'rg', in2: 'b', mode: 'screen', result: 'split' }, f);
-      el('feComposite', { 'in': 'split', in2: 'mid', operator: 'arithmetic', k1: 0, k2: PRISM, k3: 1 - PRISM, k4: 0 }, f);
-      // A displacement map the size of the surface: neutral grey in the middle; in a band along the rim each pixel
-      // points inwards along the rim's normal, so what lies under the edge is drawn in from further in and bends
-      // round it. The outermost pixel is left unbent, so the edge itself stays clean.
-      var built = '', queued = false;
-      function build() {
-        queued = false;
-        var w = Math.round(node.offsetWidth), h = Math.round(node.offsetHeight);
-        var r = Math.min(parseFloat(getComputedStyle(node).borderTopLeftRadius) || 0, w / 2, h / 2);
-        if (!w || !h || built === w + 'x' + h + 'x' + r) return;
-        built = w + 'x' + h + 'x' + r;
-        var c = document.createElement('canvas'); c.width = w; c.height = h;
-        var g = c.getContext('2d'), img = g.createImageData(w, h), px = img.data;
-        var ax = w / 2 - r, ay = h / 2 - r;
-        for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
-          var p0 = x + 0.5 - w / 2, p1 = y + 0.5 - h / 2, qx = Math.abs(p0) - ax, qy = Math.abs(p1) - ay;
-          var ox = Math.max(qx, 0), oy = Math.max(qy, 0), ol = Math.hypot(ox, oy);
-          var d = ol + Math.min(Math.max(qx, qy), 0) - r, nx, ny;
-          if (qx > 0 && qy > 0) { nx = ox / ol * Math.sign(p0); ny = oy / ol * Math.sign(p1); }
-          else if (qx > qy) { nx = Math.sign(p0); ny = 0; } else { nx = 0; ny = Math.sign(p1); }
-          var k = Math.exp(Math.min(0, d) / band * 2.2) * Math.min(1, Math.max(0, -d - 0.5)), i = (y * w + x) * 4;
-          px[i] = 128 - 127 * nx * k; px[i + 1] = 128 - 127 * ny * k; px[i + 2] = 128; px[i + 3] = 255;
-        }
-        g.putImageData(img, 0, 0);
-        map.setAttribute('width', w); map.setAttribute('height', h);
-        map.setAttribute('href', c.toDataURL());
-        node.style.setProperty('--lg', 'url(#' + id + ')');
-      }
-      build();
-      new ResizeObserver(function () { if (!queued) { queued = true; requestAnimationFrame(build); } }).observe(node);
-    }
-    window.glassify = function (root) {
-      (root || document).querySelectorAll('[data-glass]:not([data-glassed])').forEach(function (n) { n.setAttribute('data-glassed', ''); glass(n); });
-    };
-    window.glassify();
-  })();
-
   // ---------- Specimen: spot the fake ----------
   var examples = data.examples;
   var current = 0, fakeSide = 0;
@@ -1316,8 +1390,11 @@ const HOME_SCRIPT = `<script>
     fakeSide = Math.random() < 0.5 ? 0 : 1;
     if (window.heroPair) window.heroPair(ex.original, ex.char);
     document.getElementById('brand').textContent = ex.real;
+    // The verdict folds away before its content goes, so the page closes up smoothly
     stage.classList.remove('revealed');
-    verdict.innerHTML = '';
+    var shown = verdict.innerHTML;
+    clearTimeout(verdict.clearing);
+    if (shown) verdict.clearing = setTimeout(function () { if (!stage.classList.contains('revealed')) verdict.innerHTML = ''; }, reduced ? 0 : 700);
     plates.forEach(function (p, i) {
       p.disabled = false;
       p.classList.remove('is-fake', 'is-real');
@@ -1353,9 +1430,11 @@ const HOME_SCRIPT = `<script>
     requestAnimationFrame(function () { stage.classList.add('revealed'); });
     var right = side !== fakeSide;
     var letter = fakeSide ? 'B' : 'A';
-    verdict.innerHTML =
-      '<p class="verdict-line"><strong>' + (right ? 'Correct: ' + letter + ' is the fake.' : letter + ' is the fake.') + '</strong> ' +
-      'Its ' + ORDINALS[ex.index] + ' letter is not the letter ' + escHtml(ex.original) + ' but <span class="mono">' + escHtml(ex.codepoint) +
+    clearTimeout(verdict.clearing);
+    verdict.innerHTML = '<div class="verdict-inner">' +
+'<div class="verdict-head"><span class="verdict-tag' + (right ? '' : ' wrong') + '">' + (right ? 'Correct' : 'Not quite') + '</span>' +
+        '<h3 class="verdict-title">' + letter + ' is the fake.</h3></div>' +
+      '<p class="verdict-line">Its ' + ORDINALS[ex.index] + ' letter is not the letter ' + escHtml(ex.original) + ' but <span class="mono">' + escHtml(ex.codepoint) +
       '</span>, a ' + escHtml(ex.name.toLowerCase().replace(/^latin (small )?letter /, '')) + ', drawn the same way.</p>' +
       '<div class="evidence">' +
         '<div class="glyph-pair"><figure><span class="g">' + escHtml(ex.original) + '</span><figcaption>real</figcaption></figure>' +
@@ -1370,8 +1449,10 @@ const HOME_SCRIPT = `<script>
             : ex.registrable ? 'No, and the .com registry would accept it' : 'No, and the .com registry refuses it') + '</dd>' +
           '<dt>Registered as</dt><dd><span class="mono">' + escHtml(ex.punycode) + '</span></dd>' +
         '</dl>' +
-        '<button type="button" class="next" id="next">Next example (' + ((current + 1) % examples.length + 1) + ' of ' + examples.length + ')</button>' +
+      '</div>' +
+      '<div class="verdict-actions"><button type="button" class="next" id="next" data-glass="8">Next example (' + ((current + 1) % examples.length + 1) + ' of ' + examples.length + ')</button></div>' +
       '</div>';
+    if (window.glassify) window.glassify(verdict);
     document.getElementById('next').addEventListener('click', function () {
       current = (current + 1) % examples.length; showSpecimen(); plates[0].focus();
     });
@@ -1410,6 +1491,10 @@ const HOME_SCRIPT = `<script>
 
     // Canvas size and where the glyphs go: they fill the band between the top of the canvas and the answer cards
     function measure() {
+      // The canvas covers the glyphs and the cards and ends just below them. Its height is set here rather than
+      // following the section, so the verdict opening below the cards can neither stretch it nor put rays behind text.
+      var secTop = document.getElementById('specimen').getBoundingClientRect().top;
+      cv.style.height = Math.round(document.getElementById('plates').getBoundingClientRect().bottom - secTop + 96 + 56) + 'px';
       var r = cv.getBoundingClientRect();
       W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
       cv.width = W * dpr; cv.height = H * dpr;
@@ -1431,14 +1516,19 @@ const HOME_SCRIPT = `<script>
       var band = Math.max(80, (cards - r.top) / S);
       geo = { narrow: narrow, size: Math.round(band * (narrow ? 0.75 : 1.05)), base: band - (narrow ? 2 : 6),
         right: narrow ? MW * 0.98 : Math.min(MW * 0.93, (W / 2 + 616) / S) };
-      // The pair's label sits beside the domain field, right-aligned under the glyphs
-      var lab = document.querySelector('.hero-pair'), sec = document.getElementById('specimen'), row = document.querySelector('.try');
-      if (lab && sec && row) {
-        var sr = sec.getBoundingClientRect(), rr = row.getBoundingClientRect();
-        lab.style.right = Math.max(0, sr.right - (r.left + geo.right * S)) + 'px';
-        lab.style.top = (rr.top + rr.height / 2 - sr.top) + 'px';
-      }
+      placeLabel();
     }
+
+    // The pair's label sits beside the domain field, right-aligned under the glyphs
+    function placeLabel() {
+      var lab = document.querySelector('.hero-pair'), sec = document.getElementById('specimen'), row = document.querySelector('.try');
+      if (!lab || !sec || !row || !geo) return;
+      var r = cv.getBoundingClientRect(), sr = sec.getBoundingClientRect(), rr = row.getBoundingClientRect();
+      lab.style.right = Math.max(0, sr.right - (r.left + geo.right * S)) + 'px';
+      lab.style.top = (rr.top + rr.height / 2 - sr.top) + 'px';
+    }
+    // The verdict opening moves the domain field down; the label follows it
+    if (window.ResizeObserver) new ResizeObserver(function () { placeLabel(); }).observe(document.getElementById('specimen'));
 
     // Distance to the nearest pixel that is set in 'on': a two-pass chamfer transform
     function distanceTo(on) {

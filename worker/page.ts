@@ -168,7 +168,7 @@ function homeReport(): string {
     <p class="lede">A scan lists registered lookalikes first, including any with mail servers, since those can send phishing email. Next come the ones still available to register, then the ones no registry would accept. Each result names the swapped character and the font in which it is hardest to spot.</p>
   </div></div>
   <div class="window">
-    <div class="window-bar"><i></i><i></i><i></i><span class="window-url">d0ma1n.app/scan/paypal.com</span></div>
+    <div class="window-bar" data-glass="8"><i></i><i></i><i></i><span class="window-url">d0ma1n.app/scan/paypal.com</span></div>
     <div class="window-body"><div id="preview"><div class="loading"><div class="spinner"></div><p>Loading a live scan&hellip;</p></div></div></div>
   </div>
   <div class="window-caption"><span>Live scan of paypal.com</span><a href="/scan/paypal.com">Open the full report</a></div>
@@ -668,7 +668,7 @@ const STYLES = `<style>
      what passes under its rim bends, with a faint prism fringe. Chromium only; elsewhere they keep their own look. */
   .lg-ok [data-glass] { backdrop-filter: var(--lg) saturate(1.5); }
   .lg-ok .plate {
-    background: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.5);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.55),
       0 30px 60px -12px rgba(50, 50, 93, 0.22), 0 18px 36px -18px rgba(0, 0, 0, 0.25);
   }
@@ -718,9 +718,11 @@ const STYLES = `<style>
     left: 50%; width: 100vw; --tilt-x: 5deg; --tilt-y: -9deg;
     transform: translateX(-50%) perspective(1600px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
     transform-origin: 75% 45%; transition: transform 1.4s cubic-bezier(0.22, 1, 0.36, 1);
-    -webkit-mask-image: linear-gradient(90deg, transparent 25%, #000 55%), linear-gradient(180deg, #000 75%, transparent);
-    -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent 25%, #000 55%), linear-gradient(180deg, #000 75%, transparent);
-    mask-composite: intersect;
+    /* The glyphs' side of the hero, plus an even patch behind both cards */
+    --under: radial-gradient(ellipse calc(var(--under-w, 0px) * 0.62) calc(var(--under-h, 0px) * 0.85) at 50% var(--under-y, -999px), #000 62%, transparent 100%);
+    -webkit-mask-image: var(--under), linear-gradient(90deg, transparent 25%, #000 55%), linear-gradient(180deg, #000 75%, transparent);
+    -webkit-mask-composite: source-over, source-in; mask-image: var(--under), linear-gradient(90deg, transparent 25%, #000 55%), linear-gradient(180deg, #000 75%, transparent);
+    mask-composite: add, intersect;
   }
   @media (max-width: 768px) {
     .hero-rays { transform: translateX(-50%); opacity: 0.45; -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent 80%); mask-image: linear-gradient(180deg, #000 45%, transparent 80%); }
@@ -879,13 +881,19 @@ const STYLES = `<style>
   .board-note { margin-top: 1.5rem; font-size: 0.98rem; color: var(--text-dim); }
 
   /* Report preview: a product window */
-  .window { border-radius: 10px; overflow: hidden; background: #fff;
+  .window { border-radius: 10px; overflow: hidden; background: #fff; position: relative;
     box-shadow: 0 50px 100px -20px rgba(50, 50, 93, 0.25), 0 30px 60px -30px rgba(0, 0, 0, 0.3); }
-  .window-bar { display: flex; align-items: center; gap: 0.45rem; padding: 0.75rem 1rem; background: var(--bg-soft); border-bottom: 1px solid var(--border); }
+  /* The toolbar floats over the report, which scrolls slowly underneath it */
+  .window-bar { position: absolute; z-index: 2; top: 10px; left: 10px; right: 10px; display: flex; align-items: center; gap: 0.45rem;
+    padding: 0.6rem 0.9rem; border-radius: 14px; background: rgba(246, 248, 251, 0.94); border: 1px solid var(--border); }
+  .lg-ok .window-bar { background: rgba(255, 255, 255, 0.64); border-color: transparent;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.6), 0 10px 26px -12px rgba(50, 50, 93, 0.3), 0 2px 5px -2px rgba(0, 0, 0, 0.08); }
+  .lg-ok .window-url { background: rgba(255, 255, 255, 0.6); border-color: rgba(11, 27, 51, 0.06); }
   .window-bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--border-strong); }
   .window-url { margin-left: 0.8rem; font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-dim);
     background: #fff; border: 1px solid var(--border); padding: 0.25rem 0.9rem; border-radius: 9999px; flex: 1; max-width: 26rem; }
-  .window-body { padding: 1.75rem 2rem 2rem; max-height: 34rem; overflow: hidden; position: relative; }
+  .window-body { padding: 0 2rem; height: 34rem; overflow: hidden; position: relative; }
+  .window-body #preview { padding: 5rem 0 3rem; will-change: transform; }
   .window-body::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 6rem; background: linear-gradient(rgba(255,255,255,0), #fff); }
   .window-body #preview { margin: 0; }
   .window-caption { margin-top: 1.1rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; font-size: 1rem; color: var(--text-dim); }
@@ -1085,7 +1093,7 @@ function renderResults(data, container) {
 
   if (available.length > 0) {
     html += section('Could be registered (' + available.length + ')', 'var(--text)',
-      'Nobody owns these yet, and the registry would accept them. Consider registering the most convincing ones yourself, or monitoring them.');
+      'Nobody owns these yet, and the registry would accept them. If ' + escHtml(data.original) + ' is yours, the most convincing are worth registering defensively, or watching for anyone who registers them.');
     html += renderVariantTable(available, data.original);
   } else if (data.variants.length > 0) {
     html += section('Could be registered (0)', 'var(--text)',
@@ -1398,7 +1406,7 @@ const HOME_SCRIPT = `<script>
       if (window.glassify) window.glassify(label);
     }
     var pair = PAIRS[0], cur = null, tween = null, TWEEN = 1.6; // seconds for one glyph to become the next
-    var start = performance.now(), visible = true, raf = 0, geo = null;
+    var start = performance.now(), visible = true, raf = 0, geo = null, under = null, feather = null, layer = null;
 
     // Canvas size and where the glyphs go: they fill the band between the top of the canvas and the answer cards
     function measure() {
@@ -1408,6 +1416,18 @@ const HOME_SCRIPT = `<script>
       MW = Math.ceil(W / S); MH = Math.ceil(H / S);
       var narrow = W < 768;
       var cards = document.getElementById('plates').getBoundingClientRect().top;
+      // The area behind both cards gets one even field of rays, so A and B sit on the same thing
+      var pr = document.getElementById('plates').getBoundingClientRect();
+      under = { x0: pr.left - r.left - 8, y0: pr.top - r.top - 4, x1: pr.right - r.left + 8, y1: pr.bottom - r.top + 8 };
+      // A soft-edged stencil of that area: the glyphs' rays fade out across its edge and the even field fades in
+      feather = document.createElement('canvas'); feather.width = cv.width; feather.height = cv.height;
+      var fx = feather.getContext('2d');
+      fx.scale(dpr, dpr); fx.filter = 'blur(16px)'; fx.fillStyle = '#000';
+      fx.fillRect(under.x0, under.y0, under.x1 - under.x0, under.y1 - under.y0);
+      layer = document.createElement('canvas'); layer.width = cv.width; layer.height = cv.height;
+      cv.style.setProperty('--under-y', ((under.y0 + under.y1) / 2).toFixed(0) + 'px');
+      cv.style.setProperty('--under-w', (under.x1 - under.x0).toFixed(0) + 'px');
+      cv.style.setProperty('--under-h', (under.y1 - under.y0).toFixed(0) + 'px');
       var band = Math.max(80, (cards - r.top) / S);
       geo = { narrow: narrow, size: Math.round(band * (narrow ? 0.75 : 1.05)), base: band - (narrow ? 2 : 6),
         right: narrow ? MW * 0.98 : Math.min(MW * 0.93, (W / 2 + 616) / S) };
@@ -1538,6 +1558,8 @@ const HOME_SCRIPT = `<script>
       var dx = Math.cos(angle), dy = Math.sin(angle), nx = -dy, ny = dx;
       var diag = Math.hypot(W, H), cx = W / 2, cy = H / 2, spacing = W < 768 ? 15 : 12, step = 1.5;
       ctx.lineCap = 'round';
+      // The glyphs' rays fade out over the cards' area, which gets its own even field afterwards
+      var U = under;
       for (var off = -diag / 2; off <= diag / 2; off += spacing) {
         var ox = cx + nx * off, oy = cy + ny * off;
         // Each ray is brightest where it passes the glyphs and falls away towards the edges
@@ -1581,6 +1603,32 @@ const HOME_SCRIPT = `<script>
           }
         }
       }
+      if (U && feather) {
+        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'destination-out'; ctx.drawImage(feather, 0, 0); ctx.restore();
+        underRays(U, dx, dy, nx, ny, diag, cx, cy, spacing, fade);
+      }
+    }
+
+    // Behind the cards: the same rays at the same angle, evenly lit across both, fading out at either end
+    function underRays(U, dx, dy, nx, ny, diag, cx, cy, spacing, fade) {
+      var lx = layer.getContext('2d');
+      lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = 'source-over'; lx.clearRect(0, 0, layer.width, layer.height);
+      lx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var a = 0.17 * fade, lg = lx.createLinearGradient(U.x0, 0, U.x1, 0);
+      lg.addColorStop(0, 'rgba(31, 90, 240, 0)');
+      lg.addColorStop(0.14, 'rgba(31, 90, 240, ' + a + ')');
+      lg.addColorStop(0.5, 'rgba(122, 76, 255, ' + (a * 0.8) + ')');
+      lg.addColorStop(0.86, 'rgba(31, 90, 240, ' + a + ')');
+      lg.addColorStop(1, 'rgba(31, 90, 240, 0)');
+      lx.strokeStyle = lg; lx.lineWidth = 1;
+      lx.beginPath();
+      for (var off = -diag / 2; off <= diag / 2; off += spacing) {
+        var ox = cx + nx * off, oy = cy + ny * off;
+        lx.moveTo(ox - dx * diag, oy - dy * diag); lx.lineTo(ox + dx * diag, oy + dy * diag);
+      }
+      lx.stroke();
+      lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = 'destination-in'; lx.drawImage(feather, 0, 0);
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(layer, 0, 0); ctx.restore();
     }
 
     function tick(now) {
@@ -1767,8 +1815,25 @@ const HOME_SCRIPT = `<script>
     if (previewLoaded) return; previewLoaded = true;
     var el = document.getElementById('preview');
     fetch('/api/scan?domain=paypal.com&top=8').then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-      .then(function (d) { renderResults(d, el); })
+      .then(function (d) { renderResults(d, el); drift(el); })
       .catch(function () { el.innerHTML = '<p class="footnote">The live scan could not load just now. <a href="/scan/paypal.com" style="color:var(--accent-bright)">Open it directly</a>.</p>'; });
+  }
+
+  // The live report scrolls slowly under the window's glass toolbar, rests, and scrolls back; hovering holds it
+  function drift(el) {
+    if (reduced || !el.animate) return;
+    var body = el.parentNode, d = el.scrollHeight - body.clientHeight;
+    if (d < 40) return;
+    // About 25px a second on average; sine easing keeps the fastest moment under 40px a second
+    var ease = 'cubic-bezier(0.37, 0, 0.63, 1)', rest = 3000, travel = Math.max(8000, d * 40), total = 2 * (rest + travel);
+    var down = rest / total, back = (2 * rest + travel) / total;
+    var anim = el.animate([
+      { transform: 'translateY(0)', offset: 0, easing: ease }, { transform: 'translateY(0)', offset: down, easing: ease },
+      { transform: 'translateY(' + -d + 'px)', offset: (rest + travel) / total, easing: ease }, { transform: 'translateY(' + -d + 'px)', offset: back, easing: ease },
+      { transform: 'translateY(0)', offset: 1 }
+    ], { duration: total, iterations: Infinity });
+    body.addEventListener('mouseenter', function () { anim.pause(); });
+    body.addEventListener('mouseleave', function () { anim.play(); });
   }
 
   var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (entries) {

@@ -860,7 +860,7 @@ const STYLES = `<style>
   .home .scan-form { margin: 0; max-width: 560px; }
   .home .scan-form input { border-radius: 9999px 0 0 9999px; padding-left: 1.4rem; }
   /* Rounded on the right only, so the text sits a touch left of centre to look centred */
-  .home .scan-form button { border-radius: 0 9999px 9999px 0; padding-left: 1.6rem; padding-right: 2.1rem; }
+  .home .scan-form button { border-radius: 0 9999px 9999px 0; padding-left: 1.2rem; padding-right: 1.55rem; }
 
   /* Sections */
   .sec { padding: 6.5rem 0 1rem; }

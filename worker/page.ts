@@ -97,7 +97,7 @@ function homeBrowsers(): string {
 <section class="sec reveal-up" id="browsers">
   <div class="sec-head"><div>
     <h2>Doesn&rsquo;t the browser catch these?</h2>
-    <p class="lede">Chrome catches this one. Its address bar shows g&#x1D0F;ogle.com as <span class="mono nowrap">xn--gogle-m29a.com</span>, because &#x1D0F; is outside the characters Unicode recommends for identifiers, and it also flags names that look like a site on its list of popular ones.</p>
+    <p class="lede">Chrome catches this one. Its address bar shows g<span class="swapch">&#x1D0F;</span>ogle.com as <span class="mono nowrap">xn--gogle-m29a.com</span>, because <span class="swapch">&#x1D0F;</span> is outside the characters Unicode recommends for identifiers, and it also flags names that look like a site on its list of popular ones.</p>
     <p class="lede">But the address bar only comes into it after the click. In an email or a chat message, a link reads however the sender typed it. Each d0ma1n report says which of your lookalikes Chrome would show as written.</p>
     <p class="lede">We&rsquo;ve also found other places where lookalikes are shown as written. They&rsquo;ve been reported to the companies responsible and fixes are under way, so we&rsquo;ll describe them once they have shipped.</p>
   </div></div>

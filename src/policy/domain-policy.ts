@@ -7,6 +7,7 @@ import {
 import { CONFUSABLE_WEIGHTS } from "namespace-guard/confusable-weights";
 import { domainToASCII } from "node:url";
 import { outsideRepertoire, registryRule } from "./repertoire.js";
+import { IDENTIFIER_ALLOWED } from "./identifier-status-data.js";
 
 import { collectScripts } from "./script.js";
 import { getDefaultBrowserForProfile, getDomainPolicyProfile } from "./profiles.js";
@@ -28,6 +29,26 @@ function normalizeLabel(value: string): string {
   return value.normalize("NFKC").toLowerCase();
 }
 
+/** Whether the label holds a character outside UTS 39's Identifier_Status=Allowed set (a small capital like ᴏ, say). */
+function hasRestricted(label: string): boolean {
+  for (const ch of label) {
+    const cp = ch.codePointAt(0)!;
+    if ((cp >= 0x61 && cp <= 0x7a) || (cp >= 0x30 && cp <= 0x39) || cp === 0x2d) continue;
+    let lo = 0;
+    let hi = IDENTIFIER_ALLOWED.length - 1;
+    let allowed = false;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const [first, last] = IDENTIFIER_ALLOWED[mid]!;
+      if (cp < first) hi = mid - 1;
+      else if (cp > last) lo = mid + 1;
+      else { allowed = true; break; }
+    }
+    if (!allowed) return true;
+  }
+  return false;
+}
+
 function toDisplayMode(
   label: string,
   scripts: string[],
@@ -35,13 +56,16 @@ function toDisplayMode(
 ): DomainDisplayMode {
   if (/^[a-z0-9-]+$/i.test(label)) return "ascii";
   if (browser === "unicode-all") return "unicode";
+  // Chrome shows punycode for any character not allowed in identifiers (its IDN rule 3)
+  if (browser === "chromium" && hasRestricted(label)) return "punycode";
   if (scripts.length <= 1) return "unicode";
   return "punycode";
 }
 
 /**
- * Each surface's display of a label. A whole-script lookalike of a Latin name is one Chromium exposes as punycode on
- * a generic TLD (its whole-script confusable check); a phone's camera banner may decode anything.
+ * Each surface's display of a label. Chromium exposes as punycode a label holding a character not allowed in
+ * identifiers (UTS 39 Identifier_Status, its IDN rule 3) and a whole-script lookalike of a Latin name on a generic TLD
+ * (its whole-script confusable check); a phone's camera banner may decode anything.
  */
 function toSurfaces(label: string, scripts: string[], wholeScriptLatinSpoof: boolean): DomainSurfaces {
   if (/^[a-z0-9-]+$/i.test(label)) {
@@ -49,7 +73,7 @@ function toSurfaces(label: string, scripts: string[], wholeScriptLatinSpoof: boo
   }
   const mixed = scripts.length > 1;
   return {
-    chromium: mixed || wholeScriptLatinSpoof ? "punycode" : "unicode",
+    chromium: mixed || wholeScriptLatinSpoof || hasRestricted(label) ? "punycode" : "unicode",
     firefox: mixed ? "punycode" : "unicode",
     androidCamera: "unicode",
     iosCamera: "punycode",

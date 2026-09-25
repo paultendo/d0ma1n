@@ -80,6 +80,16 @@ describe("evaluateDomainSpoof", () => {
     expect(ascii.surfaces.androidCamera).toBe("ascii");
   });
 
+  it("shows Chromium exposing a character not allowed in identifiers, even in a single-script label", () => {
+    // ᴏ (U+1D0F) is Latin, but UTS 39 marks it Technical, so Chrome's IDN rule 3 shows punycode
+    const smallCap = evaluateDomainSpoof("g\u1D0Fogle", "google", { profile: getDomainPolicyProfile("verisign-com") });
+    expect(smallCap.surfaces.chromium).toBe("punycode");
+    expect(smallCap.displayMode).toBe("punycode");
+    // An accented letter in common use is allowed, so Chrome shows it as written
+    const accented = evaluateDomainSpoof("caf\u00E9", "cafe", { profile: getDomainPolicyProfile("verisign-com") });
+    expect(accented.surfaces.chromium).toBe("unicode");
+  });
+
   it("a registered mixed-script lookalike is a threat, not noise", () => {
     const profile = getDomainPolicyProfile("verisign-com");
     const unregistered = evaluateDomainSpoof("pаypal", "paypal", { profile });

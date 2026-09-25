@@ -1067,6 +1067,9 @@ const STYLES = `<style>
     background: #fff; border: 1px solid var(--border); padding: 0.25rem 0.9rem; border-radius: 9999px; flex: 1; max-width: 26rem; }
   .window-body { padding: 0 2rem; height: 34rem; overflow: hidden; position: relative; }
   .window-body #preview { padding: 5rem 0 3rem; will-change: transform; }
+  .result-window { margin-top: 0.5rem; }
+  .result-body { padding: 5rem 2rem 2rem; }
+  @media (max-width: 768px) { .result-body { padding: 4.5rem 1rem 1.25rem; } }
   .window-body::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 6rem; background: linear-gradient(rgba(255,255,255,0), #fff); }
   .window-body #preview { margin: 0; }
   .window-caption { margin-top: 1.1rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; font-size: 1rem; color: var(--text-dim); }
@@ -1297,7 +1300,16 @@ async function doScan() {
 
   btn.disabled = true;
   btn.textContent = 'Scanning...';
-  results.innerHTML = '<div class="loading" role="status"><div class="wordmark-loader" aria-hidden="true"><svg width="0" height="0" style="position:absolute"><filter id="wl-goo"><feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 28 -12"/></filter></svg><span class="wl-fold wl-1ch">d</span><span class="wl-swap"><i>o</i><b>0</b></span><span class="wl-fold wl-2ch">ma</span><span class="wl-swap"><i>i</i><b>1</b></span><span class="wl-fold wl-1ch">n</span></div><p>Scanning for lookalikes and checking who holds them&hellip;</p></div>';
+  // On the homepage the report arrives in the same product window as the preview, so it reads as the tool's output
+  // rather than more of the page; on its own page the report is the page
+  let target = results;
+  if (document.body.classList.contains('home')) {
+    results.innerHTML = '<div class="window result-window"><div class="window-bar" data-glass="8"><i></i><i></i><i></i>' +
+      '<span class="window-url">d0ma1n.app/scan/' + escHtml(domain) + '</span></div><div class="result-body"></div></div>';
+    target = results.querySelector('.result-body');
+    if (window.glassify) window.glassify(results);
+  }
+  target.innerHTML = '<div class="loading" role="status"><div class="wordmark-loader" aria-hidden="true"><svg width="0" height="0" style="position:absolute"><filter id="wl-goo"><feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 28 -12"/></filter></svg><span class="wl-fold wl-1ch">d</span><span class="wl-swap"><i>o</i><b>0</b></span><span class="wl-fold wl-2ch">ma</span><span class="wl-swap"><i>i</i><b>1</b></span><span class="wl-fold wl-1ch">n</span></div><p>Scanning for lookalikes and checking who holds them&hellip;</p></div>';
   // On the homepage the results land below the specimen, out of view: take the reader there as the scan starts
   if (document.body.classList.contains('home')) {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1313,9 +1325,9 @@ async function doScan() {
       throw new Error(err.error || 'Scan failed: ' + res.status);
     }
     const data = await res.json();
-    renderResults(data, results);
+    renderResults(data, target);
   } catch (err) {
-    results.innerHTML = '<div class="loading"><p style="color:var(--danger-high)">Error: ' + escHtml(err.message) + '</p></div>';
+    target.innerHTML = '<div class="loading"><p style="color:var(--danger-high)">Error: ' + escHtml(err.message) + '</p></div>';
   } finally {
     btn.disabled = false;
     btn.textContent = 'Scan';

@@ -65,6 +65,7 @@ export function renderLandingPage(data: LandingData): string {
 function homeSpecimen(): string {
   return `
 <section class="specimen" id="specimen">
+  <canvas class="hero-rays" aria-hidden="true"></canvas>
   <h1 class="headline">Which one is the real <em id="brand">google.com</em>?</h1>
   <div class="plates" id="plates">
     <button type="button" class="plate" data-side="0"><span class="plate-tag">A</span><span class="plate-stamp"></span><span class="plate-domain" id="plate-0"></span></button>
@@ -640,7 +641,20 @@ const STYLES = `<style>
   .topbar nav a.pill:hover { background: var(--accent-bright); color: #fff; }
 
   /* Hero: spot the fake */
-  .specimen { padding: 4.5rem 0 2rem; }
+  .specimen { padding: 5.5rem 0 2rem; position: relative; }
+  @media (min-width: 769px) { .specimen .headline { max-width: 11.5ch; margin-bottom: 3.2rem; } }
+  .specimen > *:not(.hero-rays) { position: relative; z-index: 1; }
+  /* Rays sweep across o and ᴏ, which are never drawn: they show only where the rays cross ink, as in the measurement */
+  .hero-rays {
+    position: absolute; z-index: 0; pointer-events: none; top: -6rem; height: calc(100% + 6rem);
+    left: 50%; width: 100vw; transform: translateX(-50%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 25%, #000 55%), linear-gradient(180deg, #000 75%, transparent);
+    -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent 25%, #000 55%), linear-gradient(180deg, #000 75%, transparent);
+    mask-composite: intersect;
+  }
+  @media (max-width: 768px) {
+    .hero-rays { opacity: 0.45; -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent 80%); mask-image: linear-gradient(180deg, #000 45%, transparent 80%); }
+  }
   .headline {
     font-family: var(--font-body); font-weight: 400; font-size: clamp(2.4rem, 5.6vw, 4.6rem);
     line-height: 1.06; letter-spacing: -0.035em; margin: 0.9rem 0 2.6rem; text-wrap: balance; color: var(--text);
@@ -1204,6 +1218,132 @@ const HOME_SCRIPT = `<script>
     document.getElementById('specimen').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
     setTimeout(function () { document.getElementById('domain-input').focus(); }, reduced ? 0 : 500);
   };
+
+  // ---------- Hero: rays reveal o and ᴏ only where they cross ink ----------
+  (function heroRays() {
+    var cv = document.querySelector('.hero-rays');
+    if (!cv) return;
+    var ctx = cv.getContext('2d');
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var W = 0, H = 0, MW = 0, MH = 0, S = 2; // glyph coverage is sampled at half resolution, then interpolated
+    var cover = [null, null], box = null;
+    var start = performance.now(), visible = true, raf = 0;
+
+    function layout() {
+      var r = cv.getBoundingClientRect();
+      W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
+      cv.width = W * dpr; cv.height = H * dpr;
+      MW = Math.ceil(W / S); MH = Math.ceil(H / S);
+      var m = document.createElement('canvas'); m.width = MW; m.height = MH;
+      var mx = m.getContext('2d', { willReadFrequently: true });
+      var narrow = W < 768;
+      // The glyphs fill the band between the top of the canvas and the answer cards
+      var cards = document.getElementById('plates').getBoundingClientRect().top;
+      var band = Math.max(80, (cards - r.top) / S);
+      var size = Math.round(band * (narrow ? 0.75 : 1.05));
+      mx.font = size + 'px Arial, sans-serif';
+      var chars = ['o', String.fromCodePoint(0x1D0F)];
+      var gap = size * 0.12, wA = mx.measureText(chars[0]).width, wB = mx.measureText(chars[1]).width;
+      var right = narrow ? MW * 0.98 : Math.min(MW * 0.93, (W / 2 + 616) / S);
+      var xB = right - wB, xA = xB - gap - wA, base = band - (narrow ? 2 : 6);
+      chars.forEach(function (ch, gi) {
+        mx.clearRect(0, 0, MW, MH);
+        mx.fillStyle = '#000';
+        mx.fillText(ch, gi ? xB : xA, base);
+        var px = mx.getImageData(0, 0, MW, MH).data, c = new Float32Array(MW * MH);
+        for (var i = 0; i < c.length; i++) c[i] = px[i * 4 + 3] / 255; // anti-aliased coverage, not a hard mask
+        cover[gi] = c;
+      });
+      // Only rays through this box can meet ink (canvas pixels)
+      box = { x0: (xA - 4) * S, x1: (right + 4) * S, y0: (base - size) * S, y1: (base + size * 0.1) * S };
+    }
+
+    // Bilinear coverage at canvas point (x, y), so crossings move smoothly rather than snapping to samples
+    function at(c, x, y) {
+      var fx = x / S - 0.5, fy = y / S - 0.5, ix = Math.floor(fx), iy = Math.floor(fy);
+      if (ix < 0 || iy < 0 || ix >= MW - 1 || iy >= MH - 1) return 0;
+      var tx = fx - ix, ty = fy - iy, i = iy * MW + ix;
+      return (c[i] * (1 - tx) + c[i + 1] * tx) * (1 - ty) + (c[i + MW] * (1 - tx) + c[i + MW + 1] * tx) * ty;
+    }
+
+    // The stretch of a ray (origin o, direction d) inside the box, as [tMin, tMax], or null
+    function clip(ox, oy, dx, dy) {
+      var t0 = -Infinity, t1 = Infinity;
+      var ax = [[ox, dx, box.x0, box.x1], [oy, dy, box.y0, box.y1]];
+      for (var k = 0; k < 2; k++) {
+        var o = ax[k][0], d = ax[k][1], lo = ax[k][2], hi = ax[k][3];
+        if (Math.abs(d) < 1e-9) { if (o < lo || o > hi) return null; continue; }
+        var a = (lo - o) / d, b = (hi - o) / d;
+        t0 = Math.max(t0, Math.min(a, b)); t1 = Math.min(t1, Math.max(a, b));
+      }
+      return t0 < t1 ? [t0, t1] : null;
+    }
+
+    var INK = ['rgba(31, 90, 240, ', 'rgba(217, 45, 32, '];
+
+    function draw(now) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      var secs = (now - start) / 1000;
+      // Ease in over the first few seconds, then turn slowly and steadily
+      var eased = secs < 3 ? secs * secs / 6 : secs - 1.5;
+      var angle = 0.62 + eased * 0.045;
+      var fade = Math.min(1, secs / 1.2);
+      var dx = Math.cos(angle), dy = Math.sin(angle), nx = -dy, ny = dx;
+      var diag = Math.hypot(W, H), cx = W / 2, cy = H / 2, spacing = W < 768 ? 15 : 12;
+      ctx.lineCap = 'round';
+      for (var off = -diag / 2; off <= diag / 2; off += spacing) {
+        var ox = cx + nx * off, oy = cy + ny * off;
+        ctx.strokeStyle = 'rgba(31, 90, 240, ' + (0.06 * fade) + ')'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(ox - dx * diag, oy - dy * diag); ctx.lineTo(ox + dx * diag, oy + dy * diag); ctx.stroke();
+        var span = clip(ox, oy, dx, dy);
+        if (!span) continue;
+        for (var g = 0; g < 2; g++) {
+          var c = cover[g], prev = at(c, ox + dx * span[0], oy + dy * span[0]), tIn = null;
+          for (var t = span[0] + 1.5; t <= span[1]; t += 1.5) {
+            var v = at(c, ox + dx * t, oy + dy * t);
+            if ((prev < 0.5) !== (v < 0.5)) {
+              // Place the crossing where coverage passes one half, between the two samples
+              var tc = t - 1.5 + 1.5 * (0.5 - prev) / (v - prev);
+              var x = ox + dx * tc, y = oy + dy * tc;
+              if (v >= 0.5) tIn = tc;
+              else if (tIn !== null) {
+                ctx.strokeStyle = INK[g] + (0.42 * fade) + ')'; ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(ox + dx * tIn, oy + dy * tIn); ctx.lineTo(x, y); ctx.stroke();
+                tIn = null;
+              }
+              ctx.fillStyle = INK[g] + (0.9 * fade) + ')';
+              ctx.beginPath(); ctx.arc(x, y, 2.2, 0, 6.2832); ctx.fill();
+            }
+            prev = v;
+          }
+        }
+      }
+    }
+
+    function tick(now) {
+      if (!visible) { raf = 0; return; }
+      draw(now);
+      raf = requestAnimationFrame(tick);
+    }
+
+    layout();
+    draw(reduced ? start + 60000 : start + 1);
+    var resizeTimer;
+    window.addEventListener('resize', function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function () { layout(); draw(performance.now()); }, 150);
+    });
+    if (reduced || !('IntersectionObserver' in window)) return;
+    new IntersectionObserver(function (e) {
+      visible = e[0].isIntersecting && !document.hidden;
+      if (visible && !raf) raf = requestAnimationFrame(tick);
+    }).observe(cv);
+    document.addEventListener('visibilitychange', function () {
+      visible = !document.hidden;
+      if (visible && !raf) raf = requestAnimationFrame(tick);
+    });
+  })();
 
   // ---------- Ray lab: the method, drawn live ----------
   var SIZE = 320, RAYS = 25, SPAN = 150, ANGLES = 36;

@@ -43,6 +43,11 @@ export type DnsResult = {
   checked?: boolean;
   /** The registry's RDAP record, when DNS alone could not settle whether the name is registered. */
   rdap?: { registered: boolean; since?: string; registrar?: string };
+  /**
+   * Who seems to hold a registered lookalike, from its registrar: the brand's own registrar or a brand-protection
+   * registrar suggests the brand holds it; any other registrar is the one to investigate.
+   */
+  holder?: "brand-registrar" | "brand-protection-registrar" | "other-registrar";
 };
 
 /** A generated domain variant with scoring and optional DNS data. */
@@ -205,6 +210,8 @@ export type ScanResult = {
   totalGenerated: number;
   /** Sorted, filtered variants. */
   variants: DomainVariant[];
+  /** The scanned domain's own registration, from the registry's RDAP record. */
+  originalRegistration?: { since?: string; registrar?: string };
 };
 
 /** Result of a reverse scan. */

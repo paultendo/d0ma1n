@@ -956,7 +956,9 @@ function renderResults(data, container) {
   html += '<h2 style="font-size:1.25rem;margin-bottom:0.5rem">Threat report for ' + escHtml(data.original) + '</h2>';
   const count = (n, label, hot) => '<span' + (hot ? ' class="hot"' : '') + '><b>' + n + '</b> ' + label + '</span>';
   const counts = [count(data.variants.length, data.variants.length === 1 ? 'lookalike' : 'lookalikes')];
-  if (registered.length > 0) counts.push(count(registered.length, 'already registered', true));
+  const heldByBrand = registered.filter(v => v.dns.holder === 'brand-registrar' || v.dns.holder === 'brand-protection-registrar').length;
+  if (registered.length - heldByBrand > 0) counts.push(count(registered.length - heldByBrand, 'registered by someone else', true));
+  if (heldByBrand > 0) counts.push(count(heldByBrand, 'probably held by the brand'));
   if (active.length > 0) counts.push(count(active.length, 'with mail servers', true));
   counts.push(count(available.length, 'could be registered'));
   if (blocked.length > 0) counts.push(count(blocked.length, 'blocked by registry rules'));
@@ -973,10 +975,22 @@ function renderResults(data, container) {
     html += '</div>';
   }
 
-  if (registered.length > 0) {
-    html += section('Already registered (' + registered.length + ')', 'var(--danger-high)',
-      'Someone owns these. Check what they point to.');
-    html += renderVariantTable(registered, data.original);
+  // A lookalike held through the brand's own registrar, or a brand-protection registrar, is most likely the brand's
+  const isBrands = v => v.dns.holder === 'brand-registrar' || v.dns.holder === 'brand-protection-registrar';
+  const elsewhere = registered.filter(v => !isBrands(v));
+  const brands = registered.filter(isBrands);
+  const own = data.originalRegistration && data.originalRegistration.registrar;
+  if (elsewhere.length > 0) {
+    html += section('Registered by someone else (' + elsewhere.length + ')', 'var(--danger-high)',
+      (own ? escHtml(data.original) + ' is registered through ' + escHtml(own) + '. These are registered through other registrars, or the registry would not say. '
+        : 'These are registered, and nothing suggests the brand holds them. ') + 'Check what they point to.');
+    html += renderVariantTable(elsewhere, data.original);
+  }
+  if (brands.length > 0) {
+    html += section('Probably held by the brand (' + brands.length + ')', 'var(--text-dim)',
+      'Registered through ' + (own ? escHtml(own) + ', the same registrar as ' + escHtml(data.original) + ', or ' : '') +
+      'a registrar that holds names for brands. That usually means the brand registered them to keep them out of other hands.');
+    html += renderVariantTable(brands, data.original);
   }
 
   if (available.length > 0) {

@@ -65,7 +65,7 @@ function rdapBase(tld: string): Promise<string | undefined> {
 }
 
 /** The registry's own record: whether the name is registered, and when and through whom. Undefined when unknown. */
-async function rdapLookup(ascii: string): Promise<DnsResult["rdap"] | undefined> {
+export async function rdapLookup(ascii: string): Promise<DnsResult["rdap"] | undefined> {
   const base = await rdapBase(ascii.split(".").pop()!);
   if (!base) return undefined;
   try {
@@ -186,4 +186,28 @@ export function createDohResolver(): DnsResolver {
       });
     },
   };
+}
+
+/**
+ * Registrars that hold names for brands (corporate and brand-protection registrars). A lookalike held through one of
+ * these is most likely the brand defending itself. Meta runs two, RegistrarSafe and RegistrarSEC.
+ */
+const BRAND_PROTECTION_REGISTRARS = [
+  "markmonitor", "csc corporate domains", "com laude", "nom-iq", "registrarsafe", "registrarsec", "safenames",
+  "corsearch", "brandsight", "lexsynergy", "ascio", "amazon registrar", "google llc", "clarivate",
+];
+/** Groups of registrars run by one company, which a brand may use side by side. */
+const REGISTRAR_FAMILIES = [["registrarsafe", "registrarsec"], ["com laude", "nom-iq"]];
+
+const norm = (r: string) => r.toLowerCase().replace(/[.,]/g, " ").replace(/\b(inc|llc|ltd|limited|corp|corporation|dba|uab|gmbh)\b/g, " ").replace(/\s+/g, " ").trim();
+
+/** How a registered lookalike's registrar compares with the brand's own. */
+export function registrarHolder(brandRegistrar: string | undefined, registrar: string): NonNullable<DnsResult["holder"]> {
+  const r = norm(registrar);
+  if (brandRegistrar) {
+    const b = norm(brandRegistrar);
+    if (r === b || r.includes(b) || b.includes(r)) return "brand-registrar";
+    if (REGISTRAR_FAMILIES.some((f) => f.some((x) => r.includes(x)) && f.some((x) => b.includes(x)))) return "brand-registrar";
+  }
+  return BRAND_PROTECTION_REGISTRARS.some((x) => r.includes(x)) ? "brand-protection-registrar" : "other-registrar";
 }

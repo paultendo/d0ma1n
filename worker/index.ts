@@ -1,7 +1,8 @@
+import { domainToASCII } from "node:url";
 import { scan } from "../src/scan.js";
 import { buildPrototypeBuckets } from "../src/reverse-map.js";
 import { reverseScan, fromPunycode } from "../src/reverse-scan.js";
-import { createDohResolver } from "./resolve-doh.js";
+import { createDohResolver, rdapLookup, registrarHolder } from "./resolve-doh.js";
 import { renderLandingPage, renderScanPage, renderTermsPage, type LandingData } from "./page.js";
 import type { ScanResult } from "../src/types.js";
 import { getBlock, toCodepoint } from "../src/reverse-map.js";
@@ -173,7 +174,7 @@ async function runScan(
     useMaxDanger?: boolean;
   }
 ): Promise<ScanResult> {
-  return scan(domain, {
+  const result = await scan(domain, {
     resolve: options.resolve,
     resolver: options.resolve ? createDohResolver() : undefined,
     buckets: getBuckets(),
@@ -185,6 +186,19 @@ async function runScan(
     maxVariants: 2000,
     probeLimit: 40,
   });
+  if (!options.resolve) return result;
+
+  // Compare each registered lookalike's registrar with the brand's: a lookalike held elsewhere is the real concern
+  const own = await rdapLookup(domainToASCII(result.original) || result.original);
+  if (own?.registered) result.originalRegistration = { since: own.since, registrar: own.registrar };
+  for (const v of result.variants) {
+    if (v.dns?.registered && v.dns.rdap?.registrar) v.dns.holder = registrarHolder(own?.registrar, v.dns.rdap.registrar);
+  }
+  // Lookalikes held elsewhere lead the list
+  const rank = (v: (typeof result.variants)[number]) =>
+    !v.dns?.registered ? 2 : v.dns.holder === "brand-registrar" || v.dns.holder === "brand-protection-registrar" ? 1 : 0;
+  result.variants.sort((a, b) => rank(a) - rank(b));
+  return result;
 }
 
 /**
@@ -212,7 +226,7 @@ async function cachedScan(
 ): Promise<ScanResult | "rate-limited"> {
   const resolve = options.resolve ?? true;
   const font = options.font ?? "";
-  const cacheKey = `v14:${domain}:${resolve}:${font}`;
+  const cacheKey = `v15:${domain}:${resolve}:${font}`;
 
   // Try KV cache first (free read)
   const cached = await kv.get(cacheKey, "json") as ScanResult | null;

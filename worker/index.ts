@@ -55,7 +55,8 @@ async function landingData(): Promise<LandingData> {
     examples.push({
       real, fake, index: sub.position, original: sub.original, char: sub.replacement,
       codepoint: toCodepoint(sub.replacement), name: CHAR_NAMES[sub.replacement] ?? "", block: getBlock(sub.replacement),
-      similarity: Math.round(v.dangerScore * 100), registrable: v.policy?.registrable ?? false, punycode: v.punycode,
+      // No font measured the pair within itself: it is alike only when a fallback font draws the character
+      similarity: Math.round(v.dangerScore * 100), fallback: !v.bestFont, registrable: v.policy?.registrable ?? false, punycode: v.punycode,
       registration: await createDohResolver().resolve(fake).then((d) => ({
         registered: d.registered, since: d.rdap?.since, registrar: d.rdap?.registrar,
       })).catch(() => null),
@@ -79,7 +80,8 @@ async function landingData(): Promise<LandingData> {
   const weights = CONFUSABLE_WEIGHTS as Record<string, Record<string, { danger: number }>>;
   const heroPairs = HERO_PAIRS.flatMap(([real, fake]) => {
     const w = weights[fake]?.[real] ?? weights[real]?.[fake];
-    return w ? [{ real, fake, codepoint: toCodepoint(fake), alike: Math.round(w.danger * 100) }] : [];
+    const sameFont = Object.values(fonts).some((f) => f[fake]?.[real] ?? f[real]?.[fake]);
+    return w ? [{ real, fake, codepoint: toCodepoint(fake), alike: Math.round(w.danger * 100), fallback: !sameFont }] : [];
   });
   landing = {
     examples, fontStrip, heroPairs, strip: { real: "google", fake: label }, registries,

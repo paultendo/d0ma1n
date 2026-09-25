@@ -4,11 +4,11 @@ import type { ScanResult, DomainVariant, ReverseScanResult } from "../src/types.
 export type LandingData = {
   examples: Array<{
     real: string; fake: string; index: number; original: string; char: string; codepoint: string; name: string;
-    block: string; similarity: number; registrable: boolean; punycode: string;
+    block: string; similarity: number; fallback: boolean; registrable: boolean; punycode: string;
     registration: { registered: boolean; since?: string; registrar?: string } | null;
   }>;
   fontStrip: Array<{ font: string; danger: number | null }>;
-  heroPairs: Array<{ real: string; fake: string; codepoint: string; alike: number }>;
+  heroPairs: Array<{ real: string; fake: string; codepoint: string; alike: number; fallback: boolean }>;
   strip: { real: string; fake: string };
   registries: Array<{ tld: string; accepts: boolean | null; rule: string; assumed: boolean }>;
   stats: { tlds: number; assumed: number; fonts: number };
@@ -93,7 +93,8 @@ function homeBrowsers(): string {
   <div class="sec-head"><div>
     <h2>Doesn&rsquo;t the browser catch these?</h2>
     <p class="lede">Chrome catches this one. Its address bar shows g&#x1D0F;ogle.com as <span class="mono nowrap">xn--gogle-m29a.com</span>, because &#x1D0F; is outside the characters Unicode recommends for identifiers, and it also flags names that look like a site on its list of popular ones.</p>
-    <p class="lede">But the address bar only comes into it after the click. In an email or a chat message, a link reads however the sender typed it, and some camera apps show the address in a QR code as written too. Each d0ma1n report says which of your lookalikes Chrome would show as written.</p>
+    <p class="lede">But the address bar only comes into it after the click. In an email or a chat message, a link reads however the sender typed it, Each d0ma1n report says which of your lookalikes Chrome would show as written.</p>
+    <p class="lede">We&rsquo;ve also found other places where lookalikes are shown as written. They&rsquo;ve been reported to the companies responsible and fixes are under way, so we&rsquo;ll describe them once they have shipped.</p>
   </div></div>
   <div class="surfaces">
     <figure class="surface">
@@ -726,18 +727,19 @@ const STYLES = `<style>
     backdrop-filter: blur(8px) saturate(1.6); -webkit-backdrop-filter: blur(8px) saturate(1.6);
   }
   .topbar nav a.pill, .scan-form button {
-    background: linear-gradient(180deg, rgba(66, 122, 255, 0.84), rgba(31, 90, 240, 0.9));
+    background: linear-gradient(180deg, rgba(42, 102, 250, 0.94), rgba(24, 78, 226, 0.97));
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.16), inset 0 -1px 0 rgba(11, 27, 90, 0.28),
       0 8px 20px -8px rgba(31, 90, 240, 0.6), 0 2px 4px -1px rgba(11, 27, 51, 0.12);
     transition: background 0.2s, box-shadow 0.2s, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
   }
   .topbar nav a.pill:hover, .scan-form button:hover:not(:disabled) {
-    background: linear-gradient(180deg, rgba(88, 140, 255, 0.86), rgba(40, 100, 250, 0.92));
+    background: linear-gradient(180deg, rgba(58, 116, 255, 0.95), rgba(31, 90, 240, 0.97));
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(11, 27, 90, 0.28),
       0 12px 26px -8px rgba(31, 90, 240, 0.65), 0 2px 4px -1px rgba(11, 27, 51, 0.12);
   }
   .topbar nav a.pill:active, .scan-form button:active:not(:disabled), .next:active, .closing button:active { transform: translateY(1px); }
-  .lg-ok .topbar nav a.pill, .lg-ok .scan-form button { background: linear-gradient(180deg, rgba(66, 122, 255, 0.76), rgba(31, 90, 240, 0.84)); }
+  .lg-ok .topbar nav a.pill, .lg-ok .scan-form button { background: linear-gradient(180deg, rgba(42, 102, 250, 0.88), rgba(24, 78, 226, 0.93)); }
+  .lg-ok .topbar nav a.pill:hover, .lg-ok .scan-form button:hover:not(:disabled) { background: linear-gradient(180deg, rgba(58, 116, 255, 0.9), rgba(31, 90, 240, 0.94)); }
   .next {
     background: rgba(255, 255, 255, 0.55); border-color: transparent;
     backdrop-filter: blur(8px) saturate(1.6); -webkit-backdrop-filter: blur(8px) saturate(1.6);
@@ -764,6 +766,7 @@ const STYLES = `<style>
     opacity: 0; transform: translateY(4px); transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1), transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
   }
   .hero-pair.on { opacity: 1; transform: none; }
+  .hero-pair.cramped { visibility: hidden; }
   .hero-pair .seg { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-radius: 9999px; }
   .hero-pair b { color: #1f5af0; font-family: var(--font-specimen); font-weight: 400; font-size: 1.05rem; line-height: 1; }
   /* The glyphs are set larger than the text beside them: centre each part so both sit on the same line */
@@ -1278,7 +1281,7 @@ function renderResults(data, container) {
   if (data.variants.length) html += '<p class="explainer">' + (asWritten
     ? asWritten + ' of these ' + (asWritten === 1 ? 'shows' : 'show') + ' as written in Chrome&rsquo;s address bar, unless ' + escHtml(data.original) + ' is on Chrome&rsquo;s list of popular sites. '
     : 'Chrome&rsquo;s address bar shows all of these in their xn-- form. ') +
-    'In an email or a chat message, a link reads however the sender typed it, and some camera apps show a QR code&rsquo;s address as written.</p>';
+    'In an email or a chat message, a link reads however the sender typed it.</p>';
   html += '</div>';
 
   if (active.length > 0) {
@@ -1322,7 +1325,7 @@ function renderResults(data, container) {
     html += renderVariantTable(blocked, data.original);
   }
 
-  html += '<p class="legend"><strong>Similarity</strong>: the share of text fonts in which the swapped character passes for the original, from confusable-vision&rsquo;s measurements; the font named under it is where the two are closest. Pairs that only Unicode&rsquo;s confusables list gives were never measured, and say so. ';
+  html += '<p class="legend"><strong>Similarity</strong>: how widely the swapped character passes for the original, from confusable-vision&rsquo;s measurements. Where fonts include both characters, it is the share of text fonts in which they look alike, and the font named under it is where they are closest. Many characters are missing from common fonts, so the browser borrows them from a fallback font; for those, it is the share of font pairings in which the borrowed glyph passes, marked &ldquo;via a fallback font&rdquo;. Pairs that only Unicode&rsquo;s confusables list gives were never measured, and say so. ';
   html += '<strong>Swapped in</strong>: where the replacement character comes from in Unicode, as its script and block. None of them is the ordinary letter it imitates, even when the script is Latin. ';
   html += 'The <span class="punycode">xn--</span> form under each lookalike is how it is actually registered and how it appears in DNS, certificates and blocklists.</p>';
 
@@ -1398,7 +1401,7 @@ function renderVariantTable(variants, original) {
     if (v.substitutions.some(s => s.measured === false)) html += '<td><span class="danger-badge unmeasured">Not measured</span><div class="font-label">Unicode lists it</div>';
     else {
       html += '<td><span class="danger-badge ' + dangerClass + '">' + dangerPct + '%</span>';
-      if (v.bestFont) html += '<div class="font-label">closest in ' + escHtml(v.bestFont) + '</div>';
+      html += '<div class="font-label">' + (v.bestFont ? 'closest in ' + escHtml(v.bestFont) : 'via a fallback font') + '</div>';
     }
     html += '</td>';
     html += '<td>' + kinds.map(k => '<span class="seg tag">' + k.map(p => '<span>' + escHtml(p) + '</span>').join('') + '</span>').join(' ') + '</td>';
@@ -1509,7 +1512,8 @@ const HOME_SCRIPT = `<script>
         '<dl class="facts">' +
           '<dt>Character</dt><dd><span class="mono">' + escHtml(ex.codepoint) + '</span> ' + escHtml(ex.name.charAt(0) + ex.name.slice(1).toLowerCase()) + '</dd>' +
           '<dt>Unicode block</dt><dd>' + escHtml(ex.block) + '</dd>' +
-          '<dt>Looks alike</dt><dd>' + (ex.similarity >= 100 ? 'in every text font that includes it' : 'in ' + ex.similarity + '% of the text fonts that include it') + '</dd>' +
+          '<dt>Looks alike</dt><dd>' + (ex.fallback ? 'when a fallback font draws it, in ' + ex.similarity + '% of pairings'
+            : ex.similarity >= 100 ? 'in every text font that includes it' : 'in ' + ex.similarity + '% of the text fonts that include it') + '</dd>' +
           '<dt>Registered</dt><dd>' + (ex.registration && ex.registration.registered
             ? 'Yes' + (ex.registration.since ? ', since ' + escHtml(ex.registration.since.slice(0, 4)) : '') +
               (ex.registration.registrar ? ', through ' + escHtml(ex.registration.registrar) : '')
@@ -1549,8 +1553,10 @@ const HOME_SCRIPT = `<script>
       if (!label) return;
       if (!info) { label.classList.remove('on'); return; }
       label.innerHTML = '<span class="seg" data-glass="6" data-glass-id="lg-pair"><span><b>' + escHtml(info.real) + '</b> and <b class="fk">' + escHtml(info.fake) + '</b> <span class="mono">' + escHtml(info.codepoint) + '</span></span>' +
-        '<span>' + (info.alike >= 95 ? 'alike in every text font that has both' : 'alike in ' + info.alike + '% of text fonts that have both') + '</span></span>';
+        '<span>' + (info.fallback ? 'alike when a fallback font draws it, in ' + info.alike + '% of pairings'
+          : info.alike >= 95 ? 'alike in every text font that has both' : 'alike in ' + info.alike + '% of text fonts that have both') + '</span></span>';
       label.classList.add('on');
+      if (typeof placeLabel === 'function') placeLabel();
       if (window.glassify) window.glassify(label);
     }
     var pair = PAIRS[0], cur = null, tween = null, TWEEN = 1.6; // seconds for one glyph to become the next
@@ -1593,6 +1599,9 @@ const HOME_SCRIPT = `<script>
       var r = cv.getBoundingClientRect(), sr = sec.getBoundingClientRect(), rr = row.getBoundingClientRect();
       lab.style.right = Math.max(0, sr.right - (r.left + geo.right * S)) + 'px';
       lab.style.top = (rr.top + rr.height / 2 - sr.top) + 'px';
+      // Where the domain field reaches under it, there is no room: step aside rather than overlap
+      var form = row.querySelector('.scan-form');
+      lab.classList.toggle('cramped', !!form && form.getBoundingClientRect().right + 16 > lab.getBoundingClientRect().left);
     }
     // The verdict opening moves the domain field down; the label follows it
     if (window.ResizeObserver) new ResizeObserver(function () { placeLabel(); }).observe(document.getElementById('specimen'));

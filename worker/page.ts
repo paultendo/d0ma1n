@@ -212,7 +212,7 @@ function homeReport(): string {
   </div></div>
   <div class="window">
     <div class="window-bar" data-glass="8"><i></i><i></i><i></i><span class="window-url">d0ma1n.app/scan/paypal.com</span></div>
-    <div class="window-body"><div id="preview"><div class="loading" role="status"><div class="wordmark-loader" aria-hidden="true"><span class="wl-grow wl-d">d</span><span class="wl-swap wl-0"><i>o</i><b>0</b></span><span class="wl-grow wl-ma">ma</span><span class="wl-swap wl-1"><i>i</i><b>1</b></span><span class="wl-grow wl-n">n</span></div><p>Loading a live scan&hellip;</p></div></div></div>
+    <div class="window-body"><div id="preview"><div class="loading" role="status"><div class="wordmark-loader" aria-hidden="true"><svg width="0" height="0" style="position:absolute"><filter id="wl-goo"><feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 28 -12"/></filter></svg><span class="wl-fold wl-1ch">d</span><span class="wl-swap"><i>o</i><b>0</b></span><span class="wl-fold wl-2ch">ma</span><span class="wl-swap"><i>i</i><b>1</b></span><span class="wl-fold wl-1ch">n</span></div><p>Loading a live scan&hellip;</p></div></div></div>
   </div>
   <div class="window-caption"><span>Live scan of paypal.com</span><a href="/scan/paypal.com">Open the full report</a></div>
 </section>`;
@@ -662,30 +662,28 @@ const STYLES = `<style>
     padding: 3rem;
     color: var(--text-dim);
   }
-  /* Loading: the wordmark assembles itself from a confusable pair. o and i become 0 and 1, then d, ma and n
-     open up around them. One 3.2s cycle, looped while the scan runs. */
+  /* Loading, one seamless 4s loop: domain; its o and i morph into the 0 and 1 of d0ma1n; d, ma and n fold away to
+     leave 01; they open again as the 0 and 1 morph back, and it is domain once more. */
   .wordmark-loader { display: inline-flex; align-items: baseline; margin-bottom: 0.9rem; font-family: var(--font-mono); font-weight: 600;
-    font-size: 2.1rem; line-height: 1; color: var(--text); animation: wl-cycle 3.2s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
-  .wl-swap { display: inline-grid; }
+    font-size: 2.1rem; line-height: 1; color: var(--text); }
+  /* o becomes 0 and i becomes 1 by shape, not by fade: both glyphs blur as one gives way to the other, and an alpha
+     threshold (#wl-goo) snaps the blend back to a hard edge, so the outline flows from one letter into the next */
+  .wl-swap { display: inline-grid; filter: url(#wl-goo); }
   .wl-swap > * { grid-area: 1 / 1; font-style: normal; font-weight: inherit; text-align: center; }
-  .wl-swap > i { animation: wl-out 3.2s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
-  .wl-swap > b { color: var(--accent); animation: wl-in 3.2s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
-  .wl-grow { display: inline-block; overflow: hidden; white-space: nowrap; max-width: 0; opacity: 0; }
-  .wl-d { animation: wl-grow-1 3.2s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
-  .wl-n { animation: wl-grow-1 3.2s cubic-bezier(0.22, 1, 0.36, 1) infinite; animation-delay: 0.1s; }
-  .wl-ma { animation: wl-grow-2 3.2s cubic-bezier(0.22, 1, 0.36, 1) infinite; animation-delay: 0.05s; }
-  @keyframes wl-cycle { 0% { opacity: 0; } 6%, 88% { opacity: 1; } 100% { opacity: 0; } }
-  @keyframes wl-out { 0%, 16% { opacity: 1; transform: none; filter: none; } 30%, 100% { opacity: 0; transform: scaleY(1.2); filter: blur(3px); } }
-  @keyframes wl-in { 0%, 16% { opacity: 0; transform: scaleY(0.8); filter: blur(3px); } 30%, 100% { opacity: 1; transform: none; filter: none; } }
-  /* The space opens first; the letters only fade in once it is nearly full, so a half-open d never reads as a c */
-  @keyframes wl-grow-1 { 0%, 34% { max-width: 0; opacity: 0; } 46% { opacity: 0; } 50% { max-width: 1ch; } 60%, 100% { max-width: 1ch; opacity: 1; } }
-  @keyframes wl-grow-2 { 0%, 34% { max-width: 0; opacity: 0; } 46% { opacity: 0; } 50% { max-width: 2ch; } 60%, 100% { max-width: 2ch; opacity: 1; } }
+  .wl-swap > i { animation: wl-out 4s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+  .wl-swap > b { color: var(--accent); animation: wl-in 4s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+  .wl-fold { display: inline-block; overflow: hidden; white-space: nowrap; animation: 4s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+  .wl-1ch { animation-name: wl-fold-1; }
+  .wl-2ch { animation-name: wl-fold-2; }
+  @keyframes wl-out { 0%, 16% { opacity: 1; filter: blur(0); } 32%, 78% { opacity: 0; filter: blur(6px); } 92%, 100% { opacity: 1; filter: blur(0); } }
+  @keyframes wl-in { 0%, 16% { opacity: 0; filter: blur(6px); } 32%, 78% { opacity: 1; filter: blur(0); } 92%, 100% { opacity: 0; filter: blur(6px); } }
+  /* Letters fade before their space closes, and their space opens before they fade in, so none is seen half-cut */
+  @keyframes wl-fold-1 { 0%, 44% { max-width: 1ch; opacity: 1; } 50% { opacity: 0; } 58%, 74% { max-width: 0; opacity: 0; } 84% { max-width: 1ch; opacity: 0; } 92%, 100% { max-width: 1ch; opacity: 1; } }
+  @keyframes wl-fold-2 { 0%, 44% { max-width: 2ch; opacity: 1; } 50% { opacity: 0; } 58%, 74% { max-width: 0; opacity: 0; } 84% { max-width: 2ch; opacity: 0; } 92%, 100% { max-width: 2ch; opacity: 1; } }
   @media (prefers-reduced-motion: reduce) {
     .wordmark-loader { animation: wl-pulse 1.6s ease-in-out infinite alternate; }
     .wl-swap > i { display: none; }
-    .wl-swap > b, .wl-grow { animation: none; opacity: 1; transform: none; filter: none; }
-    .wl-d, .wl-n { max-width: 1ch; }
-    .wl-ma { max-width: 2ch; }
+    .wl-swap > b, .wl-fold { animation: none; opacity: 1; filter: none; }
     @keyframes wl-pulse { from { opacity: 1; } to { opacity: 0.45; } }
   }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -1300,7 +1298,7 @@ async function doScan() {
 
   btn.disabled = true;
   btn.textContent = 'Scanning...';
-  results.innerHTML = '<div class="loading" role="status"><div class="wordmark-loader" aria-hidden="true"><span class="wl-grow wl-d">d</span><span class="wl-swap wl-0"><i>o</i><b>0</b></span><span class="wl-grow wl-ma">ma</span><span class="wl-swap wl-1"><i>i</i><b>1</b></span><span class="wl-grow wl-n">n</span></div><p>Scanning for lookalikes and checking who holds them&hellip;</p></div>';
+  results.innerHTML = '<div class="loading" role="status"><div class="wordmark-loader" aria-hidden="true"><svg width="0" height="0" style="position:absolute"><filter id="wl-goo"><feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 28 -12"/></filter></svg><span class="wl-fold wl-1ch">d</span><span class="wl-swap"><i>o</i><b>0</b></span><span class="wl-fold wl-2ch">ma</span><span class="wl-swap"><i>i</i><b>1</b></span><span class="wl-fold wl-1ch">n</span></div><p>Scanning for lookalikes and checking who holds them&hellip;</p></div>';
   // On the homepage the results land below the specimen, out of view: take the reader there as the scan starts
   if (document.body.classList.contains('home')) {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

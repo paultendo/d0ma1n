@@ -35,14 +35,21 @@ export function renderLandingPage(data: LandingData): string {
 </head>
 <body class="home">
   <div class="container">
-    <header class="topbar">
+    <header class="topbar topbar-float"><div class="bar">
       <a href="/" class="logo">d<span>0</span>ma<span>1</span>n</a>
       <nav aria-label="Sections">
         <a href="#method">Method</a><a href="#fonts">Fonts</a><a href="#registries">Registries</a><a href="#report">Report</a>
         <a href="https://github.com/paultendo/d0ma1n">GitHub</a>
         <a href="#specimen" class="pill" onclick="scanFromTop(); return false;">Scan a domain</a>
       </nav>
-    </header>
+    </div></header>
+    <svg class="lg-defs" width="0" height="0" aria-hidden="true" focusable="false">
+      <filter id="lg" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+        <feImage id="lg-map" x="0" y="0" width="1" height="1" preserveAspectRatio="none" result="map"/>
+        <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="frost"/>
+        <feDisplacementMap in="frost" in2="map" scale="24" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+    </svg>
     ${homeSpecimen()}
     ${RESULTS_CONTAINER}
     ${homeMethod()}
@@ -642,6 +649,33 @@ const STYLES = `<style>
   }
   .topbar nav a.pill:hover { background: var(--accent-bright); color: #fff; }
 
+  /* On the homepage the bar docks as a floating pill of glass once the page scrolls. Chromium refracts what passes
+     under its rim through an SVG displacement filter (flat in the middle, bending in a thin band at the edge); other
+     browsers get frosted glass. */
+  .topbar-float { position: sticky; top: 0; z-index: 50; display: block; padding: 0.75rem 0; }
+  .topbar-float .bar {
+    position: relative; isolation: isolate;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    padding: 0.5rem 0; margin: 0; border-radius: 9999px; background: rgba(255, 255, 255, 0);
+    transition: background 0.5s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+      margin 0.5s cubic-bezier(0.22, 1, 0.36, 1), padding 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .topbar-float.docked .bar {
+    margin: 0 -0.9rem; padding: 0.5rem 0.5rem 0.5rem 0.9rem; background: rgba(255, 255, 255, 0.5);
+    -webkit-backdrop-filter: blur(12px) saturate(1.6); backdrop-filter: blur(12px) saturate(1.6);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.6),
+      inset 0 7px 10px -9px rgba(11, 27, 51, 0.12), inset 0 -1px 0 rgba(11, 27, 51, 0.05),
+      0 12px 32px -12px rgba(50, 50, 93, 0.28), 0 2px 6px -2px rgba(0, 0, 0, 0.08);
+  }
+  .lg-ok .topbar-float.docked .bar { background: rgba(255, 255, 255, 0.18); backdrop-filter: url(#lg) saturate(1.6); }
+  /* A soft white core keeps the links legible over anything, and leaves the rim clear so the bending shows */
+  .topbar-float .bar::before {
+    content: ""; position: absolute; inset: 7px 12px; z-index: -1; border-radius: inherit; background: rgba(255, 255, 255, 0.88);
+    filter: blur(6px); opacity: 0; transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .lg-ok .topbar-float.docked .bar::before { opacity: 1; }
+  .lg-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+
   /* Hero: spot the fake */
   .specimen { padding: 5.5rem 0 2rem; position: relative; }
   @media (min-width: 769px) { .specimen .headline { max-width: 11.5ch; margin-bottom: 3.2rem; } }
@@ -1154,6 +1188,45 @@ const HOME_SCRIPT = `<script>
 (function () {
   var data = window.HOME;
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- Glass bar ----------
+  (function () {
+    var top = document.querySelector('.topbar-float'), bar = top && top.querySelector('.bar'), map = document.getElementById('lg-map');
+    if (!bar) return;
+    var brands = (navigator.userAgentData && navigator.userAgentData.brands) || [];
+    var chromium = brands.some(function (b) { return /Chromium/.test(b.brand); });
+    if (chromium && map) document.documentElement.classList.add('lg-ok');
+    function onScroll() { top.classList.toggle('docked', window.scrollY > 24); }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    if (!chromium || !map) return;
+    // A displacement map the size of the bar: neutral grey in the middle; in a band along the rim each pixel points
+    // inwards along the rim's normal, so what lies under the edge is drawn in from further in and bends round it.
+    // The outermost pixel is left unbent, so the edge itself stays clean.
+    var built = '';
+    function build() {
+      var w = Math.round(bar.offsetWidth), h = Math.round(bar.offsetHeight);
+      if (!w || !h || built === w + 'x' + h) return;
+      built = w + 'x' + h;
+      var c = document.createElement('canvas'); c.width = w; c.height = h;
+      var g = c.getContext('2d'), img = g.createImageData(w, h), px = img.data;
+      var r = h / 2, ax = w / 2 - r, ay = h / 2 - r, BAND = 9;
+      for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+        var p0 = x + 0.5 - w / 2, p1 = y + 0.5 - h / 2, qx = Math.abs(p0) - ax, qy = Math.abs(p1) - ay;
+        var ox = Math.max(qx, 0), oy = Math.max(qy, 0), ol = Math.hypot(ox, oy);
+        var d = ol + Math.min(Math.max(qx, qy), 0) - r, nx, ny;
+        if (qx > 0 && qy > 0) { nx = ox / ol * Math.sign(p0); ny = oy / ol * Math.sign(p1); }
+        else if (qx > qy) { nx = Math.sign(p0); ny = 0; } else { nx = 0; ny = Math.sign(p1); }
+        var k = Math.exp(Math.min(0, d) / BAND * 2.2) * Math.min(1, Math.max(0, -d - 0.5)), i = (y * w + x) * 4;
+        px[i] = 128 - 127 * nx * k; px[i + 1] = 128 - 127 * ny * k; px[i + 2] = 128; px[i + 3] = 255;
+      }
+      g.putImageData(img, 0, 0);
+      map.setAttribute('width', w); map.setAttribute('height', h);
+      map.setAttribute('href', c.toDataURL());
+    }
+    build();
+    if (window.ResizeObserver) new ResizeObserver(build).observe(bar);
+  })();
 
   // ---------- Specimen: spot the fake ----------
   var examples = data.examples;

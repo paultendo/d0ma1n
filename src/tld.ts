@@ -1,5 +1,10 @@
 import { buildPrototypeBuckets } from "./reverse-map.js";
 import type { PrototypeBuckets } from "./types.js";
+import { MULTI_SUFFIXES, SUFFIX_EXCEPTIONS as EXCEPTIONS, WILDCARD_SUFFIXES } from "./suffix-data.js";
+
+const MULTI_SUFFIX_SET = new Set(MULTI_SUFFIXES);
+const WILDCARD_SET = new Set(WILDCARD_SUFFIXES);
+const SUFFIX_EXCEPTIONS = new Set(EXCEPTIONS);
 
 /** Common TLDs for scanning. */
 export const DEFAULT_TLDS = ["com", "net", "org", "io"];
@@ -20,42 +25,25 @@ export function tldScript(tld: string): string | undefined {
   return undefined;
 }
 
-/** Split a domain into label + TLD at the last dot. */
+/**
+ * Split a domain into its registrable label and its public suffix, by the longest suffix the Public Suffix List's
+ * ICANN section knows: bank.co.za is "bank" under co.za, and paypal.com is "paypal" under com.
+ */
 export function splitDomain(domain: string): { label: string; tld: string } {
-  // Handle multi-part TLDs (.co.uk, .com.au)
-  const knownMultiPart = [
-    "co.uk",
-    "com.au",
-    "co.nz",
-    "co.jp",
-    "com.br",
-    "co.kr",
-    "co.in",
-    "com.mx",
-    "com.cn",
-    "org.uk",
-    "net.au",
-    "ac.uk",
-  ];
-
   const lower = domain.toLowerCase().replace(/\.$/, ""); // strip trailing dot
-
-  for (const tld of knownMultiPart) {
-    if (lower.endsWith(`.${tld}`)) {
-      const label = lower.slice(0, -(tld.length + 1));
-      return { label, tld };
+  const parts = lower.split(".");
+  if (parts.length === 1) return { label: lower, tld: "com" };
+  // The longest suffix wins, but the label must keep at least one part
+  for (let i = 1; i < parts.length - 1; i++) {
+    const suffix = parts.slice(i).join(".");
+    const parent = parts.slice(i + 1).join(".");
+    // An exception (!city.kawasaki.jp) is registrable itself: its parent is the suffix
+    if (SUFFIX_EXCEPTIONS.has(suffix)) return { label: parts.slice(0, i + 1).join("."), tld: parent };
+    if (MULTI_SUFFIX_SET.has(suffix) || WILDCARD_SET.has(parent)) {
+      return { label: parts.slice(0, i).join("."), tld: suffix };
     }
   }
-
-  const lastDot = lower.lastIndexOf(".");
-  if (lastDot === -1) {
-    return { label: lower, tld: "com" };
-  }
-
-  return {
-    label: lower.slice(0, lastDot),
-    tld: lower.slice(lastDot + 1),
-  };
+  return { label: parts.slice(0, -1).join("."), tld: parts[parts.length - 1]! };
 }
 
 /**

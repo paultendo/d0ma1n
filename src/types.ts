@@ -47,7 +47,8 @@ export type DnsResult = {
   rdap?: { registered: boolean; since?: string; registrar?: string };
   /**
    * Who seems to hold a registered lookalike, from its registrar: the brand's own registrar or a brand-protection
-   * registrar suggests the brand holds it; any other registrar is the one to investigate.
+   * registrar, or the brand's own registrar together with a shared name server, suggests the brand holds it;
+   * anything else is the one to investigate.
    */
   holder?: "brand-registrar" | "brand-protection-registrar" | "other-registrar";
 };

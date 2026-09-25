@@ -72,6 +72,17 @@ export function computeDangerScore(
 }
 
 /**
+ * Faces that are not text faces (confusable-vision's DISPLAY_FONTS): handwriting, calligraphy, engraved, small-capital
+ * and decorative faces. A report never names one as the font a lookalike is hardest to spot in: nobody reads a domain
+ * in Brush Script.
+ */
+const DISPLAY_FONTS = new Set([
+  "Academy Engraved LET", "Apple Chancery", "Apple Symbols", "Bodoni 72 Smallcaps", "Bradley Hand", "Brush Script MT",
+  "Chalkboard", "Chalkboard SE", "Chalkduster", "Copperplate", "Herculanum", "Luminari", "Marker Felt", "Noteworthy",
+  "Papyrus", "Party LET", "Phosphate", "Savoye LET", "SignPainter", "Snell Roundhand", "Trattatello", "Zapfino",
+]);
+
+/**
  * Find the font where this variant's substitution scores highest.
  * Returns the best font name and its score, or undefined if no
  * font-specific data is available.
@@ -84,6 +95,7 @@ export function findBestFont(
   let bestScore = 0;
 
   for (const [fontName, weights] of Object.entries(fontWeights)) {
+    if (DISPLAY_FONTS.has(fontName)) continue;
     let fontProduct = 1;
     let allFound = true;
 

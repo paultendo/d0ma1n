@@ -194,20 +194,27 @@ export function createDohResolver(): DnsResolver {
  */
 const BRAND_PROTECTION_REGISTRARS = [
   "markmonitor", "csc corporate domains", "com laude", "nom-iq", "registrarsafe", "registrarsec", "safenames",
-  "corsearch", "brandsight", "lexsynergy", "ascio", "amazon registrar", "google llc", "clarivate",
+  "corsearch", "brandsight", "lexsynergy", "ascio", "clarivate",
 ];
+// Amazon Registrar and Google (now Squarespace) are left out: anyone can register through them, attackers included.
 /** Groups of registrars run by one company, which a brand may use side by side. */
 const REGISTRAR_FAMILIES = [["registrarsafe", "registrarsec"], ["com laude", "nom-iq"]];
 
 const norm = (r: string) => r.toLowerCase().replace(/[.,]/g, " ").replace(/\b(inc|llc|ltd|limited|corp|corporation|dba|uab|gmbh)\b/g, " ").replace(/\s+/g, " ").trim();
 
-/** How a registered lookalike's registrar compares with the brand's own. */
-export function registrarHolder(brandRegistrar: string | undefined, registrar: string): NonNullable<DnsResult["holder"]> {
+/**
+ * Whether a registered lookalike is probably the brand's own. A brand-protection registrar (MarkMonitor and the like)
+ * serves brands only, so its name counts on its own. A shared registrar does not: most small brands use GoDaddy or
+ * Namecheap, and so do attackers. It counts only when the lookalike also shares a name server with the real domain,
+ * which a stranger cannot arrange.
+ */
+export function registrarHolder(brandRegistrar: string | undefined, registrar: string, sharesNameServer = false): NonNullable<DnsResult["holder"]> {
   const r = norm(registrar);
-  if (brandRegistrar) {
+  if (BRAND_PROTECTION_REGISTRARS.some((x) => r.includes(x))) return "brand-protection-registrar";
+  if (brandRegistrar && sharesNameServer) {
     const b = norm(brandRegistrar);
     if (r === b || r.includes(b) || b.includes(r)) return "brand-registrar";
     if (REGISTRAR_FAMILIES.some((f) => f.some((x) => r.includes(x)) && f.some((x) => b.includes(x)))) return "brand-registrar";
   }
-  return BRAND_PROTECTION_REGISTRARS.some((x) => r.includes(x)) ? "brand-protection-registrar" : "other-registrar";
+  return "other-registrar";
 }

@@ -104,7 +104,7 @@ function homeBrowsers(): string {
   <div class="sec-head"><div>
     <h2>Doesn&rsquo;t the browser catch these?</h2>
     <p class="lede">Chrome catches this one. Its address bar shows g<span class="swapch">&#x1D0F;</span>ogle.com as <span class="mono nowrap">xn--gogle-m29a.com</span>, because <span class="swapch">&#x1D0F;</span> is outside the characters Unicode recommends for identifiers, and it also flags names that look like a site on its list of popular ones.</p>
-    <p class="lede">But the address bar only comes into it after the click. In an email or a chat message, a link reads however the sender typed it. Each d0ma1n report says which of your lookalikes Chrome would show as written.</p>
+    <p class="lede">But the address bar only comes into it after the click. In an email or a chat message, a link reads however the sender typed it.</p>
     <p class="lede">We&rsquo;ve also found other places where lookalikes are shown as written. They&rsquo;ve been reported to the companies responsible and fixes are under way, so we&rsquo;ll describe them once they have shipped.</p>
   </div></div>
   <div class="surfaces">
@@ -133,7 +133,7 @@ function homeMethod(): string {
   <div class="sec-head"><div>
     <h2>How d0ma1n measures a lookalike</h2>
     <p class="lede">The lookalike data comes from <a href="https://github.com/paultendo/confusable-vision">confusable-vision</a>, an open-source project by <a href="https://paultendo.github.io">Paul Wood FRSA</a> that measures how alike two characters look.</p>
-    <p class="lede">It casts parallel rays through each character&rsquo;s outline at 36 angles and records where each ray crosses ink. When two characters cross in the same places at every angle, at the same size and on the same baseline, most readers will take one for the other. <a href="https://github.com/paultendo/confusable-vision/blob/main/docs/metric-calibration.md">How the method was tested</a></p>
+    <p class="lede">It casts parallel rays through each character&rsquo;s outline at 36 angles and records where each ray crosses ink. When two characters cross in the same places at every angle, at the same size and on the same baseline, they are drawn alike. The thresholds were set against 31 pairs whose answer is known, from Unicode&rsquo;s own confusables list; there has been no study with readers yet. <a href="https://github.com/paultendo/confusable-vision/blob/main/docs/metric-calibration.md">How the method was tested</a></p>
     <p class="lede">Below, your browser draws the letter o and the small capital <span class="swapch">&#x1D0F;</span> and compares them one angle at a time.</p>
   </div></div>
   <div class="raylab">
@@ -226,11 +226,11 @@ function homeNumbers(data: LandingData): string {
     <p class="lede">d0ma1n and its data are open source, built by <a href="https://paultendo.github.io">Paul Wood FRSA</a> (<a href="https://github.com/paultendo">@paultendo</a>). confusable-vision measures which characters look alike, namespace-guard packages those measurements as a library, and d0ma1n adds registry rules and DNS checks.</p>
   </div></div>
   <div class="numbers">
-    <div class="num"><div class="num-v">857</div><div class="num-k">lookalike pairs, measured at the size characters appear in text and checked against pairs with known answers. The 322 that pass the release&rsquo;s thresholds score every result.</div>
+    <div class="num"><div class="num-v">857</div><div class="num-k">lookalike pairs, measured at the size characters appear in text, with thresholds set against 31 pairs of known answer from Unicode&rsquo;s confusables list. The 322 that pass the release&rsquo;s thresholds score every result.</div>
       <div class="num-src"><span class="seg"><a href="https://github.com/paultendo/confusable-vision">confusable-vision</a><span>CC-BY-4.0</span></span></div></div>
     <div class="num"><div class="num-v">${data.stats.fonts}</div><div class="num-k">fonts with their own scores, so a report can name the font in which a lookalike is hardest to spot</div>
       <div class="num-src"><span class="seg"><a href="https://www.npmjs.com/package/namespace-guard">namespace-guard</a><span>MIT</span></span></div></div>
-    <div class="num"><div class="num-v">${data.stats.tlds.toLocaleString("en-GB")}</div><div class="num-k">TLDs whose registry rules are checked for every result: ${(data.stats.tlds - data.stats.assumed).toLocaleString("en-GB")} from published tables and policies, and ${data.stats.assumed} country codes with no published policy, treated as ASCII-only</div>
+    <div class="num"><div class="num-v">${data.stats.tlds.toLocaleString("en-GB")}</div><div class="num-k">TLDs whose registry rules are checked for every result, ${(data.stats.tlds - data.stats.assumed).toLocaleString("en-GB")} of them from published tables and policies. The other ${data.stats.assumed}, country codes with no policy we could find, are judged by script alone, and say so.</div>
       <div class="num-src"><span class="seg"><a href="https://github.com/paultendo/d0ma1n">d0ma1n</a><span>MIT</span></span></div></div>
   </div>
 </section>`;
@@ -1340,7 +1340,10 @@ function renderResults(data, container) {
   const registered = data.variants.filter(v => v.dns && v.dns.registered).sort(byDanger);
   const unregistered = data.variants.filter(v => !v.dns || !v.dns.registered);
   // The registry's own rules (IDN tables, single-script policy) decide whether an unregistered lookalike can be bought at all
-  const available = unregistered.filter(v => !v.policy || v.policy.registrable).sort(byDanger);
+  // Only names that were looked up can be called available; the rest are listed apart, as not checked
+  const lookedUp = v => v.dns && v.dns.checked !== false;
+  const available = unregistered.filter(v => (!v.policy || v.policy.registrable) && lookedUp(v)).sort(byDanger);
+  const unchecked = unregistered.filter(v => (!v.policy || v.policy.registrable) && !lookedUp(v)).sort(byDanger);
   const blocked = unregistered.filter(v => v.policy && !v.policy.registrable).sort(byDanger);
   const tld = data.original.slice(data.original.indexOf('.'));
 
@@ -1355,16 +1358,13 @@ function renderResults(data, container) {
   if (heldByBrand > 0) counts.push(count(heldByBrand, 'probably held by the brand'));
   if (active.length > 0) counts.push(count(active.length, 'with mail servers', true));
   counts.push(count(available.length, 'could be registered'));
+  if (unchecked.length) counts.push(count(unchecked.length, 'not checked'));
   if (blocked.length > 0) counts.push(count(blocked.length, 'blocked by registry rules'));
   html += '<div class="results-meta"><span class="seg">' + counts.join('') + '</span></div>';
   html += '<p class="explainer">Each lookalike swaps a letter of your domain for a different Unicode character that looks almost the same. ';
   html += 'The swapped letter is <mark class="diff">highlighted</mark>, with your real domain underneath for comparison.</p>';
-  // How many would read as written even in Chrome's address bar: the answer to "doesn't the browser catch these?"
-  const asWritten = data.variants.filter(v => v.policy && v.policy.surfaces && v.policy.surfaces.chromium === 'unicode').length;
-  if (data.variants.length) html += '<p class="explainer">' + (asWritten
-    ? asWritten + ' of these ' + (asWritten === 1 ? 'shows' : 'show') + ' as written in Chrome&rsquo;s address bar, unless ' + escHtml(data.original) + ' is on Chrome&rsquo;s list of popular sites. '
-    : 'Chrome&rsquo;s address bar shows all of these in their xn-- form. ') +
-    'In an email or a chat message, a link reads however the sender typed it.</p>';
+  // Chrome catches some lookalikes in its address bar, by rules this report does not model in full, so it makes no count
+  if (data.variants.length) html += '<p class="explainer">Browsers show some lookalikes in their xn-- form in the address bar, after the click. In an email or a chat message, a link reads however the sender typed it.</p>';
   html += '</div>';
 
   if (active.length > 0) {
@@ -1389,18 +1389,23 @@ function renderResults(data, container) {
   }
   if (brands.length > 0) {
     html += section('Probably held by the brand (' + brands.length + ')', 'var(--text-dim)',
-      'Registered through ' + (own ? escHtml(own) + ', the same registrar as ' + escHtml(data.original) + ', or ' : '') +
-      'a registrar that holds names for brands. That usually means the brand registered them to keep them out of other hands.');
+      'Registered through a registrar that only serves brands' + (own ? ', or through ' + escHtml(own) + ' (as ' + escHtml(data.original) + ' is) with the same name servers' : '') +
+      '. That usually means the brand registered them to keep them out of other hands. The same registrar alone is not enough: attackers use popular registrars too.');
     html += renderVariantTable(brands, data.original);
   }
 
   if (available.length > 0) {
     html += section('Could be registered (' + available.length + ')', 'var(--text)',
-      'Nobody owns these yet, and the registry would accept them. If ' + escHtml(data.original) + ' is yours, the most convincing are worth registering defensively, or watching for anyone who registers them.');
+      'The registry would accept these and nobody appears to hold them: the registry says so where it was asked, and none has DNS records. If ' + escHtml(data.original) + ' is yours, the most convincing are worth registering defensively, or watching for anyone who registers them.');
     html += renderVariantTable(available, data.original);
-  } else if (data.variants.length > 0) {
+  } else if (data.variants.length > 0 && !unchecked.length) {
     html += section('Could be registered (0)', 'var(--text)',
       'None of the lookalikes found can be registered under ' + escHtml(tld) + ' today.');
+  }
+  if (unchecked.length > 0) {
+    html += section('Not checked (' + unchecked.length + ')', 'var(--text-dim)',
+      'The registry would accept these, but a scan only looks up so many names, so whether anyone holds them is unknown.');
+    html += renderVariantTable(unchecked, data.original);
   }
 
   if (blocked.length > 0) {
@@ -1409,7 +1414,7 @@ function renderResults(data, container) {
     html += renderVariantTable(blocked, data.original);
   }
 
-  html += '<p class="legend"><strong>Similarity</strong>: how widely the swapped character passes for the original, from confusable-vision&rsquo;s measurements. Where fonts include both characters, it is the share of text fonts in which they look alike, and the font named under it is where they are closest. Many characters are missing from common fonts, so the browser borrows them from a fallback font; for those, it is the share of font pairings in which the borrowed glyph passes, marked &ldquo;via a fallback font&rdquo;. Pairs that only Unicode&rsquo;s confusables list gives were never measured, and say so. ';
+  html += '<p class="legend"><strong>Similarity</strong>: how widely the swapped character passes for the original, from confusable-vision&rsquo;s measurements on macOS fonts and Roboto. Where fonts include both characters, it is the share of text fonts in which they look alike, and the font named under it is where they are closest. Many characters are missing from common fonts, so the browser borrows them from a fallback font; for those, it is the share of font pairings in which the borrowed glyph passes, marked &ldquo;via a fallback font&rdquo;. Where several letters are swapped, it is the weakest swap&rsquo;s figure. ';
   html += '<strong>Swapped in</strong>: where the replacement character comes from in Unicode, as its script and block. None of them is the ordinary letter it imitates, even when the script is Latin. ';
   html += 'The <span class="punycode">xn--</span> form under each lookalike is how it is actually registered and how it appears in DNS, certificates and blocklists.</p>';
 
@@ -1464,8 +1469,11 @@ function renderVariantTable(variants, original) {
       status = '<span class="threat-none">Can&rsquo;t be registered</span><div class="swap-note">' + escHtml(refusal(v)) + '</div>';
     } else {
       const checked = v.dns && v.dns.checked !== false;
-      status = '<span class="threat-open">' + (checked ? 'Available' : 'Not checked') + '</span>';
+      // Available only when the registry itself says so; no DNS records alone could be a name held but not in use
+      const confirmed = checked && v.dns.rdap && v.dns.rdap.registered === false;
+      status = '<span class="threat-open">' + (!checked ? 'Not checked' : confirmed ? 'Available' : 'No DNS records') + '</span>';
       if (v.dns && !checked) status += '<div class="swap-note">Only the most alike names are looked up.</div>';
+      else if (checked && !confirmed) status += '<div class="swap-note">The registry wasn&rsquo;t asked, so it could be held but unused.</div>';
       if (v.policy && v.policy.registryRules === 'unknown') {
         status += '<div class="swap-note">This registry&rsquo;s character rules are unknown; judged by script only.</div>';
       }

@@ -207,10 +207,17 @@ async function runScan(
   if (!options.resolve) return result;
 
   // Compare each registered lookalike's registrar with the brand's: a lookalike held elsewhere is the real concern
-  const own = await rdapLookup(domainToASCII(result.original) || result.original);
+  const ownAscii = domainToASCII(result.original) || result.original;
+  const [own, ownDns] = await Promise.all([
+    rdapLookup(ownAscii),
+    createDohResolver().resolve(ownAscii).catch(() => null),
+  ]);
   if (own?.registered) result.originalRegistration = { since: own.since, registrar: own.registrar };
+  const ownNs = new Set((ownDns?.ns ?? []).map((n) => n.toLowerCase().replace(/\.$/, "")));
   for (const v of result.variants) {
-    if (v.dns?.registered && v.dns.rdap?.registrar) v.dns.holder = registrarHolder(own?.registrar, v.dns.rdap.registrar);
+    if (!v.dns?.registered || !v.dns.rdap?.registrar) continue;
+    const shares = (v.dns.ns ?? []).some((n) => ownNs.has(n.toLowerCase().replace(/\.$/, "")));
+    v.dns.holder = registrarHolder(own?.registrar, v.dns.rdap.registrar, shares);
   }
   // Lookalikes held elsewhere lead the list
   const rank = (v: (typeof result.variants)[number]) =>
@@ -244,7 +251,7 @@ async function cachedScan(
 ): Promise<ScanResult | "rate-limited"> {
   const resolve = options.resolve ?? true;
   const font = options.font ?? "";
-  const cacheKey = `v16:${domain}:${resolve}:${font}`;
+  const cacheKey = `v17:${domain}:${resolve}:${font}`;
 
   // Try KV cache first (free read)
   const cached = await kv.get(cacheKey, "json") as ScanResult | null;

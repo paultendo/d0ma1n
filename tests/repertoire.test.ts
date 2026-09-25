@@ -67,8 +67,9 @@ describe("country-code registries researched outside IANA", () => {
 });
 
 describe("unchecked Latin country codes", () => {
-  it("are assumed ASCII-only, and say so", () => {
-    expect(registryRule("tv")).toEqual({ kind: "ascii", assumed: true });
+  it("are not assumed ASCII-only: with no published policy they are judged like unknown TLDs", () => {
+    expect(registryRule("tv")).toEqual({ kind: "unknown" });
+    expect(outsideRepertoire("g\u1D0Fogle", "tv")).toBeUndefined();
     expect(registryRule("de")).toMatchObject({ kind: "tables" });
   });
 

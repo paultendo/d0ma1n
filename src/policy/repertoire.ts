@@ -42,7 +42,9 @@ export function registryRule(tld: string): RegistryRule {
   const k = key(tld);
   const rule = TLD_RULES[k];
   if (rule === undefined) return { kind: "unknown" };
-  if (rule === "ascii" && TLD_ASSUMED_ASCII.includes(k)) return { kind: "ascii", assumed: true };
+  // No published policy was found for these, so ASCII-only is a guess: a verdict built on it would be stated as fact
+  // (.tv, one of them, does sell IDNs). They are judged like unknown TLDs, by script alone.
+  if (rule === "ascii" && TLD_ASSUMED_ASCII.includes(k)) return { kind: "unknown" };
   return { kind: rule === "ascii" ? "ascii" : "tables", source: TLD_RULE_SOURCES[k] };
 }
 
@@ -54,7 +56,7 @@ export function registryRule(tld: string): RegistryRule {
  */
 export function outsideRepertoire(label: string, tld: string): string[] | undefined {
   const rule = TLD_RULES[key(tld)];
-  if (rule === undefined) return undefined;
+  if (rule === undefined || TLD_ASSUMED_ASCII.includes(key(tld))) return undefined;
   const chars = [...label].filter((ch) => !ldh(ch.codePointAt(0)!));
   if (chars.length === 0) return [];
   if (rule === "ascii") return chars;

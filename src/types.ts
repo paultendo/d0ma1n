@@ -39,6 +39,8 @@ export type DnsResult = {
   hasMx: boolean;
   /** "active" = has MX (likely phishing), "parked" = registered without MX, "unregistered" = not registered. */
   threatLevel: "active" | "parked" | "unregistered";
+  /** False when the name was not looked up (the lookup budget ran out), so "unregistered" is unknown, not a verdict. */
+  checked?: boolean;
   /** The registry's RDAP record, when DNS alone could not settle whether the name is registered. */
   rdap?: { registered: boolean; since?: string; registrar?: string };
 };

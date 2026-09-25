@@ -72,7 +72,7 @@ function homeSpecimen(): string {
   </div>
   <div class="verdict" id="verdict" aria-live="polite"></div>
   <div class="try">
-    <p class="try-label">Your domain</p>
+    <p class="try-label">Try a domain</p>
     <form class="scan-form" action="javascript:void(0)" onsubmit="doScan()">
       <input type="text" id="domain-input" placeholder="yourcompany.com" autocomplete="off" spellcheck="false" aria-label="Domain to scan">
       <button type="submit" id="scan-btn">Scan</button>
@@ -1048,7 +1048,9 @@ function renderVariantTable(variants, original) {
     } else if (v.policy && !v.policy.registrable) {
       status = '<span class="threat-none">Can&rsquo;t be registered</span><div class="swap-note">' + escHtml(refusal(v)) + '</div>';
     } else {
-      status = '<span class="threat-open">' + (v.dns ? 'Available' : 'Not checked') + '</span>';
+      const checked = v.dns && v.dns.checked !== false;
+      status = '<span class="threat-open">' + (checked ? 'Available' : 'Not checked') + '</span>';
+      if (v.dns && !checked) status += '<div class="swap-note">Only the most alike names are looked up.</div>';
       if (v.policy && v.policy.registryRules === 'unknown') {
         status += '<div class="swap-note">This registry&rsquo;s character rules are unknown; judged by script only.</div>';
       }

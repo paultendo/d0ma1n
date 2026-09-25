@@ -1152,6 +1152,7 @@ const HOME_SCRIPT = `<script>
   function showSpecimen() {
     var ex = examples[current];
     fakeSide = Math.random() < 0.5 ? 0 : 1;
+    if (window.heroPair) window.heroPair(ex.original, ex.char);
     document.getElementById('brand').textContent = ex.real;
     stage.classList.remove('revealed');
     verdict.innerHTML = '';
@@ -1229,55 +1230,88 @@ const HOME_SCRIPT = `<script>
     var ctx = cv.getContext('2d');
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
     var W = 0, H = 0, MW = 0, MH = 0, S = 2; // glyph coverage is sampled at half resolution, then interpolated
-    var cover = [null, null], box = null;
-    var start = performance.now(), visible = true, raf = 0;
+    // Real confusable pairs, each drawn identically in Arial: small capitals, and Cyrillic letters against Latin
+    var PAIRS = [['o', '\u1D0F'], ['a', '\u0430'], ['e', '\u0435'], ['p', '\u0440'], ['c', '\u0441'],
+      ['v', '\u1D20'], ['j', '\u0458'], ['s', '\u0455']];
+    var pair = PAIRS[0], cur = null, tween = null, TWEEN = 1.6; // seconds for one glyph to become the next
+    var start = performance.now(), visible = true, raf = 0, geo = null;
 
-    function layout() {
+    // Canvas size and where the glyphs go: they fill the band between the top of the canvas and the answer cards
+    function measure() {
       var r = cv.getBoundingClientRect();
       W = Math.max(1, Math.round(r.width)); H = Math.max(1, Math.round(r.height));
       cv.width = W * dpr; cv.height = H * dpr;
       MW = Math.ceil(W / S); MH = Math.ceil(H / S);
-      var m = document.createElement('canvas'); m.width = MW; m.height = MH;
-      var mx = m.getContext('2d', { willReadFrequently: true });
       var narrow = W < 768;
-      // The glyphs fill the band between the top of the canvas and the answer cards
       var cards = document.getElementById('plates').getBoundingClientRect().top;
       var band = Math.max(80, (cards - r.top) / S);
-      var size = Math.round(band * (narrow ? 0.75 : 1.05));
-      mx.font = size + 'px Arial, sans-serif';
-      var chars = ['o', String.fromCodePoint(0x1D0F)];
-      var gap = size * 0.12, wA = mx.measureText(chars[0]).width, wB = mx.measureText(chars[1]).width;
-      var right = narrow ? MW * 0.98 : Math.min(MW * 0.93, (W / 2 + 616) / S);
-      var xB = right - wB, xA = xB - gap - wA, base = band - (narrow ? 2 : 6);
-      chars.forEach(function (ch, gi) {
+      geo = { narrow: narrow, size: Math.round(band * (narrow ? 0.75 : 1.05)), base: band - (narrow ? 2 : 6),
+        right: narrow ? MW * 0.98 : Math.min(MW * 0.93, (W / 2 + 616) / S) };
+    }
+
+    // Distance to the nearest pixel that is set in 'on': a two-pass chamfer transform
+    function distanceTo(on) {
+      var d = new Float32Array(MW * MH), INF = 1e9, D = 1.4142;
+      for (var i = 0; i < d.length; i++) d[i] = on[i] ? 0 : INF;
+      for (var y = 0; y < MH; y++) for (var x = 0; x < MW; x++) {
+        var k = y * MW + x, v = d[k];
+        if (x > 0) v = Math.min(v, d[k - 1] + 1);
+        if (y > 0) { v = Math.min(v, d[k - MW] + 1); if (x > 0) v = Math.min(v, d[k - MW - 1] + D); if (x < MW - 1) v = Math.min(v, d[k - MW + 1] + D); }
+        d[k] = v;
+      }
+      for (var y2 = MH - 1; y2 >= 0; y2--) for (var x2 = MW - 1; x2 >= 0; x2--) {
+        var k2 = y2 * MW + x2, v2 = d[k2];
+        if (x2 < MW - 1) v2 = Math.min(v2, d[k2 + 1] + 1);
+        if (y2 < MH - 1) { v2 = Math.min(v2, d[k2 + MW] + 1); if (x2 < MW - 1) v2 = Math.min(v2, d[k2 + MW + 1] + D); if (x2 > 0) v2 = Math.min(v2, d[k2 + MW - 1] + D); }
+        d[k2] = v2;
+      }
+      return d;
+    }
+
+    // Signed distance fields for a pair (negative inside the ink), and the box the glyphs occupy.
+    // Blending two fields morphs one outline into the other, which is what the tween between pairs does.
+    function fieldsFor(chars) {
+      var m = document.createElement('canvas'); m.width = MW; m.height = MH;
+      var mx = m.getContext('2d', { willReadFrequently: true });
+      mx.font = geo.size + 'px Arial, sans-serif';
+      var gap = geo.size * 0.12, wA = mx.measureText(chars[0]).width, wB = mx.measureText(chars[1]).width;
+      var xB = geo.right - wB, xA = xB - gap - wA;
+      var fields = chars.map(function (ch, gi) {
         mx.clearRect(0, 0, MW, MH);
         mx.fillStyle = '#000';
-        mx.fillText(ch, gi ? xB : xA, base);
-        var px = mx.getImageData(0, 0, MW, MH).data, c = new Float32Array(MW * MH);
-        for (var i = 0; i < c.length; i++) c[i] = px[i * 4 + 3] / 255; // anti-aliased coverage, not a hard mask
-        cover[gi] = c;
+        mx.fillText(ch, gi ? xB : xA, geo.base);
+        var px = mx.getImageData(0, 0, MW, MH).data, n = MW * MH;
+        var inside = new Uint8Array(n), outside = new Uint8Array(n), cov = new Float32Array(n);
+        for (var i = 0; i < n; i++) { cov[i] = px[i * 4 + 3] / 255; inside[i] = cov[i] >= 0.5 ? 1 : 0; outside[i] = 1 - inside[i]; }
+        var toIn = distanceTo(inside), toOut = distanceTo(outside), f = new Float32Array(n);
+        for (var j = 0; j < n; j++) {
+          // Along the anti-aliased edge, coverage places the outline between pixels
+          f[j] = cov[j] > 0 && cov[j] < 1 ? 0.5 - cov[j] : inside[j] ? -(toOut[j] - 0.5) : toIn[j] - 0.5;
+        }
+        return f;
       });
-      // Only rays through this box can meet ink (canvas pixels)
-      box = { x0: (xA - 4) * S, x1: (right + 4) * S, y0: (base - size) * S, y1: (base + size * 0.1) * S };
+      return { f: fields, box: { x0: (xA - 6) * S, x1: (geo.right + 6) * S, y0: (geo.base - geo.size) * S, y1: (geo.base + geo.size * 0.12) * S } };
     }
 
-    // Bilinear coverage at canvas point (x, y), so crossings move smoothly rather than snapping to samples
-    function at(c, x, y) {
+    function layout() { measure(); cur = fieldsFor(pair); if (tween) tween.to = fieldsFor(tween.pair); }
+
+    // Bilinear signed distance at canvas point (x, y); outside the canvas counts as far from any ink
+    function field(f, x, y) {
       var fx = x / S - 0.5, fy = y / S - 0.5, ix = Math.floor(fx), iy = Math.floor(fy);
-      if (ix < 0 || iy < 0 || ix >= MW - 1 || iy >= MH - 1) return 0;
+      if (ix < 0 || iy < 0 || ix >= MW - 1 || iy >= MH - 1) return 1e3;
       var tx = fx - ix, ty = fy - iy, i = iy * MW + ix;
-      return (c[i] * (1 - tx) + c[i + 1] * tx) * (1 - ty) + (c[i + MW] * (1 - tx) + c[i + MW + 1] * tx) * ty;
+      return (f[i] * (1 - tx) + f[i + 1] * tx) * (1 - ty) + (f[i + MW] * (1 - tx) + f[i + MW + 1] * tx) * ty;
     }
 
-    // The stretch of a ray (origin o, direction d) inside the box, as [tMin, tMax], or null
-    function clip(ox, oy, dx, dy) {
+    // The stretch of a ray (origin o, direction d) inside box b, as [tMin, tMax], or null
+    function clip(b, ox, oy, dx, dy) {
       var t0 = -Infinity, t1 = Infinity;
-      var ax = [[ox, dx, box.x0, box.x1], [oy, dy, box.y0, box.y1]];
+      var ax = [[ox, dx, b.x0, b.x1], [oy, dy, b.y0, b.y1]];
       for (var k = 0; k < 2; k++) {
         var o = ax[k][0], d = ax[k][1], lo = ax[k][2], hi = ax[k][3];
         if (Math.abs(d) < 1e-9) { if (o < lo || o > hi) return null; continue; }
-        var a = (lo - o) / d, b = (hi - o) / d;
-        t0 = Math.max(t0, Math.min(a, b)); t1 = Math.min(t1, Math.max(a, b));
+        var a = (lo - o) / d, c = (hi - o) / d;
+        t0 = Math.max(t0, Math.min(a, c)); t1 = Math.min(t1, Math.max(a, c));
       }
       return t0 < t1 ? [t0, t1] : null;
     }
@@ -1288,12 +1322,15 @@ const HOME_SCRIPT = `<script>
 
     // A slice of ink along one ray, with a soft extrusion behind it so the glyph reads as a solid slab
     function slice(g, x0, y0, x1, y1, fade) {
-      for (var k = 8; k >= 1; k--) {
-        ctx.strokeStyle = DEPTH[g] + (0.07 * fade * (9 - k) / 8) + ')'; ctx.lineWidth = 2.4;
-        ctx.beginPath(); ctx.moveTo(x0 + k * 1.2, y0 + k * 1.7); ctx.lineTo(x1 + k * 1.2, y1 + k * 1.7); ctx.stroke();
+      for (var k = 16; k >= 1; k--) {
+        ctx.strokeStyle = DEPTH[g] + (0.028 * fade * (17 - k) / 16) + ')'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(x0 + k * 1.3, y0 + k * 1.8); ctx.lineTo(x1 + k * 1.3, y1 + k * 1.8); ctx.stroke();
       }
-      ctx.strokeStyle = INK[g] + (0.42 * fade) + ')'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      // A light halo, then a soft glow in the ink's colour, separate the line from its shadow
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+      ctx.strokeStyle = 'rgba(255, 255, 255, ' + (0.85 * fade) + ')'; ctx.lineWidth = 7; ctx.stroke();
+      ctx.strokeStyle = INK[g] + (0.1 * fade) + ')'; ctx.lineWidth = 5; ctx.stroke();
+      ctx.strokeStyle = INK[g] + (0.5 * fade) + ')'; ctx.lineWidth = 2; ctx.stroke();
     }
 
     function draw(now) {
@@ -1305,28 +1342,39 @@ const HOME_SCRIPT = `<script>
       var phase = p < sweep ? p / sweep : p < cycle / 2 ? 1 : p < cycle / 2 + sweep ? 1 - (p - cycle / 2) / sweep : 0;
       var angle = 0.5 + 0.55 * easeInOutCubic(phase);
       var fade = Math.min(1, secs / 1.2);
+      // Mid-tween, each glyph's field is a blend of the old pair's and the new one's
+      var mix = 0, from = cur, to = null;
+      if (tween) {
+        var q = (now - tween.at) / 1000 / TWEEN;
+        if (q >= 1) { cur = tween.to; pair = tween.pair; tween = null; from = cur; }
+        else { mix = easeInOutCubic(Math.max(0, q)); to = tween.to; }
+      }
+      var b = to ? { x0: Math.min(from.box.x0, to.box.x0), x1: Math.max(from.box.x1, to.box.x1),
+        y0: Math.min(from.box.y0, to.box.y0), y1: Math.max(from.box.y1, to.box.y1) } : from.box;
       var dx = Math.cos(angle), dy = Math.sin(angle), nx = -dy, ny = dx;
-      var diag = Math.hypot(W, H), cx = W / 2, cy = H / 2, spacing = W < 768 ? 15 : 12;
+      var diag = Math.hypot(W, H), cx = W / 2, cy = H / 2, spacing = W < 768 ? 15 : 12, step = 1.5;
       ctx.lineCap = 'round';
       for (var off = -diag / 2; off <= diag / 2; off += spacing) {
         var ox = cx + nx * off, oy = cy + ny * off;
         ctx.strokeStyle = 'rgba(31, 90, 240, ' + (0.06 * fade) + ')'; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(ox - dx * diag, oy - dy * diag); ctx.lineTo(ox + dx * diag, oy + dy * diag); ctx.stroke();
-        var span = clip(ox, oy, dx, dy);
+        var span = clip(b, ox, oy, dx, dy);
         if (!span) continue;
         for (var g = 0; g < 2; g++) {
-          var c = cover[g], prev = at(c, ox + dx * span[0], oy + dy * span[0]), tIn = null;
-          for (var t = span[0] + 1.5; t <= span[1]; t += 1.5) {
-            var v = at(c, ox + dx * t, oy + dy * t);
-            if ((prev < 0.5) !== (v < 0.5)) {
-              // Place the crossing where coverage passes one half, between the two samples
-              var tc = t - 1.5 + 1.5 * (0.5 - prev) / (v - prev);
+          var fa = from.f[g], fb = to ? to.f[g] : null;
+          var val = function (t) {
+            var x = ox + dx * t, y = oy + dy * t, v = field(fa, x, y);
+            return fb ? v + (field(fb, x, y) - v) * mix : v;
+          };
+          var prev = val(span[0]), tIn = null;
+          for (var t = span[0] + step; t <= span[1]; t += step) {
+            var v = val(t);
+            if ((prev < 0) !== (v < 0)) {
+              // The outline is where the signed distance passes zero, between the two samples
+              var tc = t - step + step * prev / (prev - v);
               var x = ox + dx * tc, y = oy + dy * tc;
-              if (v >= 0.5) tIn = tc;
-              else if (tIn !== null) {
-                slice(g, ox + dx * tIn, oy + dy * tIn, x, y, fade);
-                tIn = null;
-              }
+              if (v < 0) tIn = tc;
+              else if (tIn !== null) { slice(g, ox + dx * tIn, oy + dy * tIn, x, y, fade); tIn = null; }
               ctx.fillStyle = INK[g] + (0.9 * fade) + ')';
               ctx.beginPath(); ctx.arc(x, y, 2.2, 0, 6.2832); ctx.fill();
             }
@@ -1341,6 +1389,21 @@ const HOME_SCRIPT = `<script>
       draw(now);
       raf = requestAnimationFrame(tick);
     }
+
+    function swapTo(next) {
+      var target = tween ? tween.pair : pair;
+      if (!next || (next[0] === target[0] && next[1] === target[1])) return;
+      if (reduced) { pair = next; cur = fieldsFor(pair); draw(start + 60000); return; }
+      if (tween) { cur = tween.to; pair = tween.pair; }
+      tween = { pair: next, to: fieldsFor(next), at: performance.now() };
+    }
+    // The game shows its own swap; otherwise the pairs change every other sweep
+    window.heroPair = function (a, b) { swapTo([a, b]); };
+    if (!reduced) setInterval(function () {
+      if (!visible || tween) return;
+      var i = PAIRS.findIndex(function (x) { return x[0] === pair[0] && x[1] === pair[1]; });
+      swapTo(PAIRS[(i + 1) % PAIRS.length]);
+    }, 22000);
 
     layout();
     draw(reduced ? start + 60000 : start + 1);

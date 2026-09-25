@@ -1,4 +1,4 @@
-import { domainToASCII } from "node:url";
+import { domainToASCII, domainToUnicode } from "node:url";
 import { scan } from "../src/scan.js";
 import { buildPrototypeBuckets } from "../src/reverse-map.js";
 import { reverseScan, fromPunycode } from "../src/reverse-scan.js";
@@ -102,6 +102,8 @@ function publicResult(result: ScanResult): ScanResult {
       const { androidCamera: _a, iosCamera: _i, ...surfaces } = v.policy.surfaces;
       return {
         ...v,
+        // Shown as a reader sees it: a Cyrillic label under .рф, not under xn--p1ai
+        domain: domainToUnicode(v.domain) || v.domain,
         policy: {
           ...v.policy,
           surfaces: surfaces as typeof v.policy.surfaces,

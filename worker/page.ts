@@ -42,7 +42,12 @@ export function renderLandingPage(data: LandingData): string {
         <a href="https://github.com/paultendo/d0ma1n">GitHub</a>
         <a href="#specimen" class="pill" data-glass="8" onclick="scanFromTop(); return false;">Scan a domain</a>
       </nav>
-    </div></header>
+      <button type="button" class="menu-btn" aria-expanded="false" aria-controls="mnav" aria-label="Menu"><span></span><span></span></button>
+    </div>
+    <nav class="mnav" id="mnav" aria-label="Sections" data-glass="10">
+      <a href="#browsers">Browsers</a><a href="#method">Method</a><a href="#fonts">Fonts</a><a href="#registries">Registries</a><a href="#report">Report</a>
+      <a href="https://github.com/paultendo/d0ma1n">GitHub</a>
+    </nav></header>
     <svg class="lg-defs" width="0" height="0" aria-hidden="true" focusable="false"></svg>
     ${homeSpecimen()}
     ${RESULTS_CONTAINER}
@@ -93,7 +98,7 @@ function homeBrowsers(): string {
   <div class="sec-head"><div>
     <h2>Doesn&rsquo;t the browser catch these?</h2>
     <p class="lede">Chrome catches this one. Its address bar shows g&#x1D0F;ogle.com as <span class="mono nowrap">xn--gogle-m29a.com</span>, because &#x1D0F; is outside the characters Unicode recommends for identifiers, and it also flags names that look like a site on its list of popular ones.</p>
-    <p class="lede">But the address bar only comes into it after the click. In an email or a chat message, a link reads however the sender typed it, Each d0ma1n report says which of your lookalikes Chrome would show as written.</p>
+    <p class="lede">But the address bar only comes into it after the click. In an email or a chat message, a link reads however the sender typed it. Each d0ma1n report says which of your lookalikes Chrome would show as written.</p>
     <p class="lede">We&rsquo;ve also found other places where lookalikes are shown as written. They&rsquo;ve been reported to the companies responsible and fixes are under way, so we&rsquo;ll describe them once they have shipped.</p>
   </div></div>
   <div class="surfaces">
@@ -553,10 +558,9 @@ const STYLES = `<style>
     background: var(--active-threat);
     color: #fff;
     border-radius: 4px;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    white-space: nowrap;
   }
   .threat-parked {
     color: var(--danger-mid);
@@ -756,6 +760,28 @@ const STYLES = `<style>
   }
   .lg-ok .topbar-float.docked .bar::before { opacity: 1; }
   .lg-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+  /* Phone menu: a button in the bar opens a glass panel of the section links below it */
+  .menu-btn { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 40px; height: 40px; margin-left: 0.4rem;
+    border: 0; border-radius: 9999px; background: transparent; cursor: pointer; align-items: center; }
+  .menu-btn span { display: block; width: 18px; height: 1.75px; border-radius: 2px; background: var(--text);
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1); }
+  .topbar-float.menu-open .menu-btn span:first-child { transform: translateY(3.4px) rotate(45deg); }
+  .topbar-float.menu-open .menu-btn span:last-child { transform: translateY(-3.4px) rotate(-45deg); }
+  .topbar-float .bar nav { margin-left: auto; }
+  .topbar .mnav { position: absolute; left: 0; right: 0; top: calc(100% - 0.25rem); display: grid; gap: 0; padding: 0.4rem; border-radius: 20px;
+    background: rgba(255, 255, 255, 0.82); -webkit-backdrop-filter: blur(16px) saturate(1.6); backdrop-filter: blur(16px) saturate(1.6);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.6), 0 24px 48px -16px rgba(50, 50, 93, 0.35), 0 4px 10px -4px rgba(0, 0, 0, 0.1);
+    opacity: 0; transform: translateY(-6px) scale(0.98); transform-origin: top right; visibility: hidden; pointer-events: none;
+    transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1), transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s 0.4s; }
+  /* Text sits on it, so it is mostly frost: the rim still bends what passes under */
+  .lg-ok .topbar .mnav { background: rgba(255, 255, 255, 0.9); }
+  .topbar-float.menu-open .mnav { opacity: 1; transform: none; visibility: visible; pointer-events: auto; transition-delay: 0s; }
+  /* Link text lines up with the logo in the bar above: 0.4rem of panel plus 0.5rem of link, as the bar's 0.9rem */
+  .topbar .mnav a { padding: 0.75rem 0.5rem; border-radius: 12px; font-size: 1.05rem; color: var(--text); text-decoration: none; }
+  .topbar-float.docked .mnav { left: -0.9rem; right: -0.9rem; }
+  .topbar .mnav a:hover, .topbar .mnav a:focus-visible { background: rgba(31, 90, 240, 0.08); color: var(--accent); outline: none; }
+  @media (min-width: 769px) { .topbar .mnav { display: none; } }
 
   /* Hero: spot the fake */
   .specimen { padding: 5.5rem 0 2rem; position: relative; }
@@ -1077,7 +1103,10 @@ const STYLES = `<style>
     .results-table { font-size: 0.8rem; }
     .results-table th:nth-child(3),
     .results-table td:nth-child(3) { display: none; }
-    .topbar nav { display: none; }
+    /* On a phone the bar keeps its one action, and the section links move into the menu */
+    .topbar-float .bar nav a:not(.pill) { display: none; }
+    .topbar nav a.pill { padding: 0.45rem 0.95rem; font-size: 0.9rem; }
+    .topbar-float .menu-btn { display: inline-flex; }
     .plates { grid-template-columns: 1fr; gap: 0.9rem; }
     .plate { padding: 2rem 1.25rem 1.6rem; }
     .evidence { grid-template-columns: 1fr; gap: 1.25rem; }
@@ -1135,6 +1164,21 @@ const SCRIPT = `<script>
       document.documentElement.style.setProperty('--bar-h', Math.round(top.offsetHeight) + 'px');
       window.addEventListener('scroll', onScroll, { passive: true });
       onScroll();
+      // Phone menu: the button toggles it; a link, Escape or a tap outside closes it
+      var menuBtn = top.querySelector('.menu-btn'), mnav = top.querySelector('.mnav');
+      if (menuBtn && mnav) {
+        var setMenu = function (open) {
+          top.classList.toggle('menu-open', open);
+          menuBtn.setAttribute('aria-expanded', String(open));
+          if (open) { var first = mnav.querySelector('a'); if (first) first.focus({ preventScroll: true }); }
+        };
+        menuBtn.addEventListener('click', function () { setMenu(!top.classList.contains('menu-open')); });
+        mnav.addEventListener('click', function (e) { if (e.target.closest('a')) setMenu(false); });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && top.classList.contains('menu-open')) { setMenu(false); menuBtn.focus(); }
+        });
+        document.addEventListener('click', function (e) { if (!top.contains(e.target)) setMenu(false); });
+      }
     }
     var brands = (navigator.userAgentData && navigator.userAgentData.brands) || [];
     var chromium = brands.some(function (b) { return /Chromium/.test(b.brand); });
@@ -1289,9 +1333,9 @@ function renderResults(data, container) {
 
   if (active.length > 0) {
     html += '<div class="alert-banner">';
-    html += '<strong>' + active.length + ' domain(s) with active mail servers.</strong> ';
-    html += 'These can receive email and may be used for phishing. ';
-    html += 'Consider <a href="https://www.icann.org/resources/pages/help/dndr/udrp-en" style="color:var(--danger-high);text-decoration:underline">filing a UDRP complaint</a> or reporting to the domain registrar.';
+    html += '<strong>' + (active.length === 1 ? '1 lookalike has' : active.length + ' lookalikes have') + ' mail servers.</strong> ';
+    html += 'They can receive email, so replies to a phishing message would reach whoever holds them. ';
+    html += 'If the brand is yours, you can <a href="https://www.icann.org/resources/pages/help/dndr/udrp-en" style="color:var(--danger-high);text-decoration:underline">file a UDRP complaint</a> or report it to the registrar.';
     html += '</div>';
   }
 
@@ -1299,7 +1343,8 @@ function renderResults(data, container) {
   const isBrands = v => v.dns.holder === 'brand-registrar' || v.dns.holder === 'brand-protection-registrar';
   const elsewhere = registered.filter(v => !isBrands(v));
   const brands = registered.filter(isBrands);
-  const own = data.originalRegistration && data.originalRegistration.registrar;
+  // Registrar names often end in a full stop ("MarkMonitor Inc."); drop it so sentences don't end in two
+  const own = data.originalRegistration && data.originalRegistration.registrar && data.originalRegistration.registrar.replace(/\.$/, '');
   if (elsewhere.length > 0) {
     html += section('Registered by someone else (' + elsewhere.length + ')', 'var(--danger-high)',
       (own ? escHtml(data.original) + ' is registered through ' + escHtml(own) + '. These are registered through other registrars, or the registry would not say. '
@@ -1370,7 +1415,7 @@ function renderVariantTable(variants, original) {
 
     let status;
     if (v.dns && v.dns.threatLevel === 'active') {
-      status = '<span class="threat-active">Active threat</span><div class="swap-note">Has mail servers' +
+      status = '<span class="threat-active">Registered, with mail</span><div class="swap-note">Mail servers set up' +
         (v.dns.rdap && v.dns.rdap.registrar ? ', registered through ' + escHtml(v.dns.rdap.registrar) : '') + '</div>';
     } else if (isRegistered) {
       status = '<span class="threat-parked">Registered</span>';
@@ -1845,7 +1890,7 @@ const HOME_SCRIPT = `<script>
 
   function mask(ch) {
     var c = document.createElement('canvas'); c.width = c.height = SIZE;
-    var x = c.getContext('2d');
+    var x = c.getContext('2d', { willReadFrequently: true });
     x.font = '240px "' + font + '"';
     x.fillStyle = '#000';
     x.fillText(ch, (SIZE - x.measureText(ch).width) / 2, 225);
@@ -1925,7 +1970,7 @@ const HOME_SCRIPT = `<script>
   // ---------- Font specimens: grade what the visitor's browser actually draws ----------
   function inkMask(ch, family) {
     var c = document.createElement('canvas'); c.width = 240; c.height = 240;
-    var x = c.getContext('2d'); x.font = '180px ' + family; x.fillStyle = '#000';
+    var x = c.getContext('2d', { willReadFrequently: true }); x.font = '180px ' + family; x.fillStyle = '#000';
     x.fillText(ch, (240 - x.measureText(ch).width) / 2, 180);
     var px = x.getImageData(0, 0, 240, 240).data, m = new Uint8Array(240 * 240);
     for (var i = 0; i < m.length; i++) m[i] = px[i * 4 + 3] > 128 ? 1 : 0;

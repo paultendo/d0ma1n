@@ -392,6 +392,8 @@ const STYLES = `<style>
     --font-specimen: Arial, 'Helvetica Neue', sans-serif;
   }
 
+  /* The hero's canvas is a tilted, full-width plane: clip what overhangs rather than let it scroll sideways */
+  html, body { overflow-x: clip; }
   body {
     font-family: var(--font-body);
     background: var(--bg);
@@ -840,14 +842,10 @@ const STYLES = `<style>
     left: 50%; width: 100vw; --tilt-x: 5deg; --tilt-y: -9deg;
     transform: translateX(-50%) perspective(1600px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
     transform-origin: 75% 45%; transition: transform 1.4s cubic-bezier(0.22, 1, 0.36, 1);
-    /* The glyphs' side of the hero, plus an even patch behind both cards */
-    --under: radial-gradient(ellipse calc(var(--under-w, 0px) * 0.62) calc(var(--under-h, 0px) * 0.85) at 50% var(--under-y, -999px), #000 62%, transparent 100%);
-    -webkit-mask-image: var(--under), linear-gradient(90deg, transparent 25%, #000 55%), linear-gradient(180deg, #000 75%, transparent);
-    -webkit-mask-composite: source-over, source-in; mask-image: var(--under), linear-gradient(90deg, transparent 25%, #000 55%), linear-gradient(180deg, #000 75%, transparent);
-    mask-composite: add, intersect;
+    /* No CSS mask: the canvas fades itself (see draw), which is far cheaper than re-masking every frame */
   }
   @media (max-width: 768px) {
-    .hero-rays { transform: translateX(-50%); opacity: 0.85; -webkit-mask-image: linear-gradient(180deg, #000 30%, transparent 46%); mask-image: linear-gradient(180deg, #000 30%, transparent 46%); }
+    .hero-rays { transform: translateX(-50%); opacity: 0.85; }
     .specimen { padding-top: 8.5rem; }
   }
   .headline {
@@ -1656,9 +1654,6 @@ const HOME_SCRIPT = `<script>
       fx.scale(dpr, dpr); fx.filter = 'blur(16px)'; fx.fillStyle = '#000';
       fx.fillRect(under.x0, under.y0, under.x1 - under.x0, under.y1 - under.y0);
       layer = document.createElement('canvas'); layer.width = cv.width; layer.height = cv.height;
-      cv.style.setProperty('--under-y', ((under.y0 + under.y1) / 2).toFixed(0) + 'px');
-      cv.style.setProperty('--under-w', (under.x1 - under.x0).toFixed(0) + 'px');
-      cv.style.setProperty('--under-h', (under.y1 - under.y0).toFixed(0) + 'px');
       var band = Math.max(80, (cards - r.top) / S);
       geo = { narrow: narrow, size: Math.round(band * 1.05), base: band - 6, right: Math.min(MW * 0.93, (W / 2 + 616) / S) };
       if (narrow) {
@@ -1741,32 +1736,46 @@ const HOME_SCRIPT = `<script>
     var SHIFT = ['rgba(122, 76, 255, ', 'rgba(255, 122, 69, '];
     function easeInOutCubic(x) { return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; }
 
-    // A slice of ink along one ray, with a soft extrusion behind it so the glyph reads as a solid slab
-    function slice(g, x0, y0, x1, y1, fade) {
-      for (var k = 16; k >= 1; k--) {
-        ctx.strokeStyle = DEPTH[g] + (0.02 * fade * (17 - k) / 16) + ')'; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(x0 + k * 1.3, y0 + k * 1.8); ctx.lineTo(x1 + k * 1.3, y1 + k * 1.8); ctx.stroke();
-      }
-      // A light halo, then a soft glow in the ink's colour, separate the line from its shadow
-      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
-      ctx.strokeStyle = 'rgba(255, 255, 255, ' + (0.7 * fade) + ')'; ctx.lineWidth = 7; ctx.stroke();
-      ctx.strokeStyle = INK[g] + (0.07 * fade) + ')'; ctx.lineWidth = 5; ctx.stroke();
-      // The line itself shifts from the ink colour into a neighbouring hue along its length
-      var grad = ctx.createLinearGradient(x0, y0, x1, y1);
-      grad.addColorStop(0, INK[g] + (0.46 * fade) + ')');
-      grad.addColorStop(1, SHIFT[g] + (0.4 * fade) + ')');
-      ctx.strokeStyle = grad; ctx.lineWidth = 2; ctx.stroke();
-    }
+    // Everything is batched: each frame collects its slices of ink first, then draws them in a few passes (the soft
+    // extrusion, a halo, a glow, the line, the dots), one stroke per pass rather than one per slice. Short slices, where
+    // a ray only grazes a curve, go in fainter buckets so they fade in rather than flicker.
+    var BUCKETS = [1, 0.6, 0.3];
+    function bucketOf(w) { return w > 0.75 ? 0 : w > 0.4 ? 1 : 2; }
 
-    function dot(g, x, y, a) {
-      ctx.fillStyle = INK[g] + (0.09 * a) + ')';
-      ctx.beginPath(); ctx.arc(x, y, 5, 0, 6.2832); ctx.fill();
-      ctx.fillStyle = INK[g] + (0.68 * a) + ')';
-      ctx.beginPath(); ctx.arc(x, y, 2, 0, 6.2832); ctx.fill();
+    function drawGlyph(g, segs, dots, fade, box) {
+      var lineGrad = ctx.createLinearGradient(box.x0, 0, box.x1, 0);
+      lineGrad.addColorStop(0, INK[g] + (0.46 * fade) + ')');
+      lineGrad.addColorStop(1, SHIFT[g] + (0.4 * fade) + ')');
+      for (var bi = 0; bi < 3; bi++) {
+        var list = segs[bi];
+        if (!list.length) continue;
+        var a = fade * BUCKETS[bi], path = new Path2D();
+        for (var i = 0; i < list.length; i += 4) { path.moveTo(list[i], list[i + 1]); path.lineTo(list[i + 2], list[i + 3]); }
+        // A soft extrusion behind the line, so the glyph reads as a solid slab
+        ctx.lineWidth = 3;
+        for (var k = 16; k >= 1; k -= 1.5) {
+          ctx.setTransform(dpr, 0, 0, dpr, k * 1.3 * dpr, k * 1.8 * dpr);
+          ctx.strokeStyle = DEPTH[g] + (0.03 * a * (17 - k) / 16) + ')';
+          ctx.stroke(path);
+        }
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        // A light halo, then a soft glow in the ink's colour, separate the line from its shadow
+        ctx.strokeStyle = 'rgba(255, 255, 255, ' + (0.7 * a) + ')'; ctx.lineWidth = 7; ctx.stroke(path);
+        ctx.strokeStyle = INK[g] + (0.07 * a) + ')'; ctx.lineWidth = 5; ctx.stroke(path);
+        ctx.globalAlpha = BUCKETS[bi]; ctx.strokeStyle = lineGrad; ctx.lineWidth = 2; ctx.stroke(path); ctx.globalAlpha = 1;
+        var pts = dots[bi], glow = new Path2D(), core = new Path2D();
+        for (var d = 0; d < pts.length; d += 2) {
+          glow.moveTo(pts[d] + 5, pts[d + 1]); glow.arc(pts[d], pts[d + 1], 5, 0, 6.2832);
+          core.moveTo(pts[d] + 2, pts[d + 1]); core.arc(pts[d], pts[d + 1], 2, 0, 6.2832);
+        }
+        ctx.fillStyle = INK[g] + (0.09 * a) + ')'; ctx.fill(glow);
+        ctx.fillStyle = INK[g] + (0.68 * a) + ')'; ctx.fill(core);
+      }
     }
 
     function draw(now) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.globalCompositeOperation = 'source-over';
       ctx.clearRect(0, 0, W, H);
       var secs = (now - start) / 1000;
       // Always forward: turn a fifth of a half-turn on a cubic ease-in-out, settle, turn again. Rays repeat every
@@ -1786,44 +1795,35 @@ const HOME_SCRIPT = `<script>
         y0: Math.min(from.box.y0, to.box.y0), y1: Math.max(from.box.y1, to.box.y1) } : from.box;
       var dx = Math.cos(angle), dy = Math.sin(angle), nx = -dy, ny = dx;
       var diag = Math.hypot(W, H), cx = W / 2, cy = H / 2, spacing = W < 768 ? 15 : 12, step = 1.5;
+      var gx = (b.x0 + b.x1) / 2, gy = (b.y0 + b.y1) / 2;
       ctx.lineCap = 'round';
-      // The glyphs' rays fade out over the cards' area, which gets its own even field afterwards
-      var U = under;
+      // The background rays: one path, lit from the glyphs outwards by a single radial gradient
+      var bg = ctx.createRadialGradient(gx, gy, 0, gx, gy, diag * 0.55);
+      bg.addColorStop(0, 'rgba(31, 90, 240, ' + (0.09 * fade).toFixed(3) + ')');
+      bg.addColorStop(0.45, 'rgba(90, 80, 250, ' + (0.04 * fade).toFixed(3) + ')');
+      bg.addColorStop(1, 'rgba(122, 76, 255, 0)');
+      var rays = new Path2D(), segs = [[[], [], []], [[], [], []]], dots = [[[], [], []], [[], [], []]];
       for (var off = -diag / 2; off <= diag / 2; off += spacing) {
         var ox = cx + nx * off, oy = cy + ny * off;
-        // Each ray is brightest where it passes the glyphs and falls away towards the edges
-        var gx = (b.x0 + b.x1) / 2, gy = (b.y0 + b.y1) / 2;
-        var tMid = (gx - ox) * dx + (gy - oy) * dy, miss = Math.abs((gx - ox) * nx + (gy - oy) * ny);
-        var near = Math.max(0, 1 - miss / (diag * 0.45));
-        var rg = ctx.createLinearGradient(ox + dx * (tMid - diag * 0.6), oy + dy * (tMid - diag * 0.6), ox + dx * (tMid + diag * 0.6), oy + dy * (tMid + diag * 0.6));
-        rg.addColorStop(0, 'rgba(31, 90, 240, 0)');
-        rg.addColorStop(0.5, 'rgba(31, 90, 240, ' + ((0.022 + 0.065 * near * near) * fade).toFixed(3) + ')');
-        rg.addColorStop(1, 'rgba(122, 76, 255, 0)');
-        ctx.strokeStyle = rg; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(ox - dx * diag, oy - dy * diag); ctx.lineTo(ox + dx * diag, oy + dy * diag); ctx.stroke();
+        rays.moveTo(ox - dx * diag, oy - dy * diag); rays.lineTo(ox + dx * diag, oy + dy * diag);
         var span = clip(b, ox, oy, dx, dy);
         if (!span) continue;
         for (var g = 0; g < 2; g++) {
           var fa = from.f[g], fb = to ? to.f[g] : null;
-          var val = function (t) {
+          var prev = null, tIn = null;
+          for (var t = span[0]; t <= span[1]; t += step) {
             var x = ox + dx * t, y = oy + dy * t, v = field(fa, x, y);
-            return fb ? v + (field(fb, x, y) - v) * mix : v;
-          };
-          var prev = val(span[0]), tIn = null;
-          for (var t = span[0] + step; t <= span[1]; t += step) {
-            var v = val(t);
-            if ((prev < 0) !== (v < 0)) {
+            if (fb) v += (field(fb, x, y) - v) * mix;
+            if (prev !== null && (prev < 0) !== (v < 0)) {
               // The outline is where the signed distance passes zero, between the two samples
               var tc = t - step + step * prev / (prev - v);
               if (v < 0) tIn = tc;
               else if (tIn !== null) {
-                // A ray that only grazes a curve makes a sliver that flickers as the angle turns: fade slices in by length
                 var len = tc - tIn, w = Math.min(1, Math.max(0, (len - 1.5) / 12));
                 w = w * w * (3 - 2 * w);
                 if (w > 0.01) {
-                  var x0 = ox + dx * tIn, y0 = oy + dy * tIn, x1 = ox + dx * tc, y1 = oy + dy * tc;
-                  slice(g, x0, y0, x1, y1, fade * w);
-                  dot(g, x0, y0, fade * w); dot(g, x1, y1, fade * w);
+                  var bk = bucketOf(w), x0 = ox + dx * tIn, y0 = oy + dy * tIn, x1 = ox + dx * tc, y1 = oy + dy * tc;
+                  segs[g][bk].push(x0, y0, x1, y1); dots[g][bk].push(x0, y0, x1, y1);
                 }
                 tIn = null;
               }
@@ -1832,16 +1832,44 @@ const HOME_SCRIPT = `<script>
           }
         }
       }
-      if (U && feather) {
-        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'destination-out'; ctx.drawImage(feather, 0, 0); ctx.restore();
-        underRays(U, dx, dy, nx, ny, diag, cx, cy, spacing, fade);
+      ctx.strokeStyle = bg; ctx.lineWidth = 1; ctx.stroke(rays);
+      drawGlyph(0, segs[0], dots[0], fade, b);
+      drawGlyph(1, segs[1], dots[1], fade, b);
+      // Fades that keep the rays off the text: in the canvas, not a CSS mask, which is costly to redo every frame
+      ctx.globalCompositeOperation = 'destination-out';
+      if (W < 768) {
+        var vf = ctx.createLinearGradient(0, H * 0.3, 0, H * 0.46);
+        vf.addColorStop(0, 'rgba(0, 0, 0, 0)'); vf.addColorStop(1, '#000');
+        ctx.fillStyle = vf; ctx.fillRect(0, H * 0.3, W, H * 0.7);
+      } else {
+        var hf = ctx.createLinearGradient(W * 0.25, 0, W * 0.55, 0);
+        hf.addColorStop(0, '#000'); hf.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = hf; ctx.fillRect(0, 0, W * 0.55, H);
+        var bf = ctx.createLinearGradient(0, H * 0.75, 0, H);
+        bf.addColorStop(0, 'rgba(0, 0, 0, 0)'); bf.addColorStop(1, '#000');
+        ctx.fillStyle = bf; ctx.fillRect(0, H * 0.75, W, H * 0.25);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      if (under && feather && W >= 768) {
+        // Only the cards' area is touched: the stencil and the even field are composited there and nowhere else
+        var R = underRect();
+        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'destination-out';
+        ctx.drawImage(feather, R.x, R.y, R.w, R.h, R.x, R.y, R.w, R.h); ctx.restore();
+        underRays(under, R, dx, dy, nx, ny, diag, cx, cy, spacing, fade);
       }
     }
 
+    // The cards' area in device pixels, with room for the stencil's soft edge
+    function underRect() {
+      var m = 48, x = Math.max(0, Math.floor((under.x0 - m) * dpr)), y = Math.max(0, Math.floor((under.y0 - m) * dpr));
+      return { x: x, y: y, w: Math.min(cv.width, Math.ceil((under.x1 + m) * dpr)) - x, h: Math.min(cv.height, Math.ceil((under.y1 + m) * dpr)) - y };
+    }
+
     // Behind the cards: the same rays at the same angle, evenly lit across both, fading out at either end
-    function underRays(U, dx, dy, nx, ny, diag, cx, cy, spacing, fade) {
+    function underRays(U, R, dx, dy, nx, ny, diag, cx, cy, spacing, fade) {
       var lx = layer.getContext('2d');
-      lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = 'source-over'; lx.clearRect(0, 0, layer.width, layer.height);
+      lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = 'source-over'; lx.clearRect(R.x, R.y, R.w, R.h);
+      lx.save(); lx.beginPath(); lx.rect(R.x, R.y, R.w, R.h); lx.clip();
       lx.setTransform(dpr, 0, 0, dpr, 0, 0);
       var a = 0.17 * fade, lg = lx.createLinearGradient(U.x0, 0, U.x1, 0);
       lg.addColorStop(0, 'rgba(31, 90, 240, 0)');
@@ -1856,8 +1884,10 @@ const HOME_SCRIPT = `<script>
         lx.moveTo(ox - dx * diag, oy - dy * diag); lx.lineTo(ox + dx * diag, oy + dy * diag);
       }
       lx.stroke();
-      lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = 'destination-in'; lx.drawImage(feather, 0, 0);
-      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(layer, 0, 0); ctx.restore();
+      lx.setTransform(1, 0, 0, 1, 0, 0); lx.globalCompositeOperation = 'destination-in';
+      lx.drawImage(feather, R.x, R.y, R.w, R.h, R.x, R.y, R.w, R.h);
+      lx.restore();
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(layer, R.x, R.y, R.w, R.h, R.x, R.y, R.w, R.h); ctx.restore();
     }
 
     function tick(now) {

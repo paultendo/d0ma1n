@@ -39,18 +39,33 @@ export type DnsResult = {
   mx: { priority: number; exchange: string }[];
   ns: string[];
   hasMx: boolean;
-  /** "active" = has MX (likely phishing), "parked" = registered without MX, "unregistered" = not registered. */
+  /** "active" = set up for email (mail servers, or SPF authorising senders), "parked" = registered without, "unregistered" = not registered. */
   threatLevel: "active" | "parked" | "unregistered";
   /** False when the name was not looked up (the lookup budget ran out), so "unregistered" is unknown, not a verdict. */
   checked?: boolean;
   /** The registry's RDAP record, when DNS alone could not settle whether the name is registered. */
-  rdap?: { registered: boolean; since?: string; registrar?: string };
+  rdap?: {
+    registered: boolean; since?: string; registrar?: string;
+    /** EPP status codes, such as clientHold (suspended) or pendingDelete (about to be released). */
+    status?: string[];
+    expires?: string;
+    /** The registrar's abuse contact, where to report a lookalike. */
+    abuse?: string;
+  };
+  /** The domain's SPF record: present, with mechanisms, when it is authorised to send email. */
+  spf?: string;
+  /** The domain's DMARC policy record (from _dmarc). */
+  dmarc?: string;
+  /** The parking or domain-marketplace service its name servers belong to, when it is parked. */
+  parking?: string;
   /**
    * Who seems to hold a registered lookalike, from its registrar: the brand's own registrar or a brand-protection
    * registrar, or the brand's own registrar together with a shared name server, suggests the brand holds it;
    * anything else is the one to investigate.
    */
-  holder?: "brand-registrar" | "brand-protection-registrar" | "other-registrar";
+  holder?: "brand-registrar" | "brand-protection-registrar" | "brand-dns" | "other-registrar";
+  /** Why a lookalike is thought to be the brand's, in a few words ("Name servers at MarkMonitor"). */
+  holderReason?: string;
 };
 
 /** A generated domain variant with scoring and optional DNS data. */
@@ -194,8 +209,10 @@ export type ScanOptions = {
   probeMixedScript?: boolean;
   /** How many mixed-script probes to resolve, most alike first (default 60). */
   probeLimit?: number;
+  /** Include ASCII lookalikes (rn for m, 1 for l). Default true. */
+  ascii?: boolean;
   /** DNS resolver to use instead of the Node one (the Worker passes DNS over HTTPS). */
-  resolver?: { resolve(domain: string): Promise<DnsResult> };
+  resolver?: { resolve(domain: string, hint?: ResolveHint): Promise<DnsResult> };
   /** Prebuilt lookup buckets, to reuse across scans. */
   buckets?: PrototypeBuckets;
 } & GenerateOptions &
@@ -240,6 +257,12 @@ export type ReverseScanResult = {
 export type OutputFormat = "table" | "json" | "csv";
 
 /** DNS resolver interface (swappable between Node and DoH). */
+/** What the scan already knows about a name, so a resolver can skip lookups that cannot change the answer. */
+export type ResolveHint = {
+  /** False when the registry would refuse the name: if DNS finds nothing, asking the registry adds nothing. */
+  registrable?: boolean;
+};
+
 export type DnsResolver = {
-  resolve(domain: string): Promise<DnsResult>;
+  resolve(domain: string, hint?: ResolveHint): Promise<DnsResult>;
 };

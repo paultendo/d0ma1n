@@ -1,6 +1,7 @@
 import { domainToASCII } from "node:url";
-import type { DnsResult, DnsResolver } from "../src/types.js";
-import { batchQuery, TYPE_MX, TYPE_NS } from "./dns-batch.js";
+import type { DnsResult, DnsResolver, ResolveHint } from "../src/types.js";
+export { brandEvidence } from "./holder.js";
+import { batchQuery, TYPE_A, TYPE_MX, TYPE_NS, TYPE_TXT } from "./dns-batch.js";
 
 const DOH_URL = "https://cloudflare-dns.com/dns-query";
 const RDAP_BOOTSTRAP = "https://data.iana.org/rdap/dns.json";
@@ -43,6 +44,30 @@ async function dohQuery(domain: string, type: string): Promise<{ status?: number
   }
 }
 
+type RdapEntity = { roles?: string[]; vcardArray?: [string, [string, unknown, string, string][]]; entities?: RdapEntity[] };
+
+/**
+ * Parking and domain-marketplace services, by their name servers. A lookalike parked with one is usually for sale or
+ * earning from ads, not phishing, and a brand may be able to buy it.
+ */
+const PARKING: [RegExp, string][] = [
+  [/(^|\.)sedoparking\.com$/, "Sedo"], [/(^|\.)bodis\.com$/, "Bodis"], [/(^|\.)parkingcrew\.net$/, "ParkingCrew"],
+  [/(^|\.)above\.com$/, "Above"], [/(^|\.)(dan\.com|undeveloped\.com)$/, "Dan"], [/(^|\.)afternic\.com$/, "Afternic"],
+  [/(^|\.)parklogic\.com$/, "ParkLogic"], [/(^|\.)dns-parking\.com$/, "Hostinger parking"],
+  [/(^|\.)uniregistrymarket\.link$/, "Uniregistry"], [/(^|\.)hugedomains\.com$/, "HugeDomains"],
+];
+// Only name servers used for nothing but parking: a registrar's default DNS also serves live sites, so it proves nothing.
+export function parkedWith(ns: string[]): string | undefined {
+  for (const n of ns) for (const [re, name] of PARKING) if (re.test(n.toLowerCase().replace(/\.$/, ""))) return name;
+  return undefined;
+}
+
+/** Whether an SPF record authorises anyone to send: "v=spf1 -all" on its own says the domain sends no mail. */
+export function authorisesSenders(spf: string | undefined): boolean {
+  if (!spf) return false;
+  return /\s(\+?(include:|a\b|a:|mx\b|mx:|ip4:|ip6:|exists:)|redirect=)/i.test(" " + spf);
+}
+
 /** RDAP base URLs by TLD, from IANA's bootstrap file (fetched once per isolate). */
 let rdapBases: Promise<Map<string, string>> | null = null;
 function rdapBase(tld: string): Promise<string | undefined> {
@@ -80,12 +105,22 @@ export async function rdapLookup(ascii: string): Promise<DnsResult["rdap"] | und
     }
     const j = (await res.json()) as {
       events?: { eventAction: string; eventDate: string }[];
-      entities?: { roles?: string[]; vcardArray?: [string, [string, unknown, string, string][]] }[];
+      entities?: RdapEntity[];
+      status?: string[];
     };
     const since = j.events?.find((e) => e.eventAction === "registration")?.eventDate?.slice(0, 10);
-    const registrar = j.entities?.find((e) => e.roles?.includes("registrar"))?.vcardArray?.[1]
-      ?.find((f) => f[0] === "fn")?.[3];
-    return { registered: true, ...(since ? { since } : {}), ...(registrar ? { registrar } : {}) };
+    const expires = j.events?.find((e) => e.eventAction === "expiration")?.eventDate?.slice(0, 10);
+    const reg = j.entities?.find((e) => e.roles?.includes("registrar"));
+    const registrar = reg?.vcardArray?.[1]?.find((f) => f[0] === "fn")?.[3];
+    // The registrar's abuse contact sits in an entity nested under the registrar
+    const abuse = reg?.entities?.find((e) => e.roles?.includes("abuse"))?.vcardArray?.[1]?.find((f) => f[0] === "email")?.[3];
+    // RDAP writes status in words ("client hold"); EPP codes are camelCase (clientHold)
+    const status = (j.status ?? []).map((s) => s.replace(/ (\w)/g, (_, c: string) => c.toUpperCase()));
+    return {
+      registered: true, ...(since ? { since } : {}), ...(registrar ? { registrar } : {}),
+      ...(status.length ? { status } : {}), ...(expires ? { expires } : {}),
+      ...(typeof abuse === "string" && abuse.includes("@") ? { abuse: abuse.replace(/^mailto:/, "") } : {}),
+    };
   } catch (e) {
     console.log(`rdap ${ascii} failed: ${e}`);
     return undefined;
@@ -97,6 +132,12 @@ export async function rdapLookup(ascii: string): Promise<DnsResult["rdap"] | und
  * requests per invocation, so only the most alike names get a nameserver query, and mail servers only for registered
  * names. Names past the budget come back unchecked rather than unregistered.
  */
+/** Whether MX records say the domain takes mail. A single record with an empty exchange ("null MX", RFC 7505) is a
+ * domain declaring that it takes none, so it does not count. */
+export function acceptsMail(mx: DnsResult["mx"]): boolean {
+  return mx.some((m) => m.exchange !== "" && m.exchange !== ".");
+}
+
 function dohFallback(budget: { names: number; extra: number }) {
   return async (ascii: string): Promise<Omit<DnsResult, "rdap"> & { checked: boolean }> => {
     if (budget.names <= 0) return { registered: false, ...EMPTY, threatLevel: "unregistered", checked: false };
@@ -112,7 +153,7 @@ function dohFallback(budget: { names: number; extra: number }) {
         return { priority: parseInt(parts[0]!, 10) || 0, exchange: parts[1]?.replace(/\.$/, "") ?? "" };
       });
     }
-    return { registered, a: [], aaaa: [], mx, ns, hasMx: mx.length > 0, threatLevel: "unregistered", checked: true };
+    return { registered, a: [], aaaa: [], mx, ns, hasMx: acceptsMail(mx), threatLevel: "unregistered", checked: true };
   };
 }
 
@@ -125,34 +166,57 @@ const EMPTY = { a: [] as string[], aaaa: [] as string[], mx: [] as DnsResult["mx
  * and says when and through whom each was registered. If the socket fails, it falls back to budgeted DoH.
  */
 export function createDohResolver(): DnsResolver {
-  let queue: { ascii: string; done: (r: DnsResult) => void }[] = [];
+  let queue: { ascii: string; registrable?: boolean; done: (r: DnsResult) => void }[] = [];
   let rdapLeft = RDAP_PER_SCAN;
   const fallback = dohFallback({ names: 28, extra: 12 });
 
   async function flush(items: typeof queue) {
     let dns: (Omit<DnsResult, "rdap"> & { checked: boolean })[];
     try {
+      // Per name, on the one connection: name servers and mail servers, then whether it has a website (A), whether it
+      // is authorised to send mail (SPF, in TXT) and its DMARC policy
+      const Q = 5;
       const answers = await batchQuery(items.flatMap((it) => [
         { name: it.ascii, type: TYPE_NS },
         { name: it.ascii, type: TYPE_MX },
+        { name: it.ascii, type: TYPE_A },
+        { name: it.ascii, type: TYPE_TXT },
+        { name: `_dmarc.${it.ascii}`, type: TYPE_TXT },
       ]));
       if (answers.every((a) => a === undefined)) throw new Error("no DNS answers over TLS");
       dns = items.map((_, i) => {
-        const ns = answers[2 * i], mx = answers[2 * i + 1];
+        const ns = answers[Q * i], mx = answers[Q * i + 1], a = answers[Q * i + 2], txt = answers[Q * i + 3], dm = answers[Q * i + 4];
         if (!ns) return { registered: false, ...EMPTY, threatLevel: "unregistered", checked: false };
         // A server failure means the name is delegated but its DNS is broken: registered, not free
         const registered = ns.ns.length > 0 || ns.rcode === DNS_SERVFAIL;
         const mxs = registered ? (mx?.mx ?? []) : [];
-        return { registered, a: [], aaaa: [], mx: mxs, ns: ns.ns, hasMx: mxs.length > 0, threatLevel: "unregistered", checked: true };
+        const spf = registered ? txt?.txt.find((t) => /^v=spf1(\s|$)/i.test(t)) : undefined;
+        const dmarc = registered ? dm?.txt.find((t) => /^v=DMARC1/i.test(t)) : undefined;
+        const parking = registered ? parkedWith(ns.ns) : undefined;
+        return {
+          registered, a: registered ? (a?.a ?? []) : [], aaaa: [], mx: mxs, ns: ns.ns, hasMx: acceptsMail(mxs),
+          ...(spf ? { spf } : {}), ...(dmarc ? { dmarc } : {}), ...(parking ? { parking } : {}),
+          threatLevel: "unregistered", checked: true,
+        };
       });
     } catch (e) {
       console.log(`dns batch failed, falling back to DoH: ${e}`);
-      dns = await Promise.all(items.map((it) => fallback(it.ascii)));
+      // Each fallback lookup is a request against a budget, so names a registry would accept go first
+      const order = items.map((_, i) => i).sort((p, q) => Number(items[p]!.registrable === false) - Number(items[q]!.registrable === false));
+      const found: typeof dns = new Array(items.length);
+      const calls = order.map((i) => fallback(items[i]!.ascii).then((r) => { found[i] = r; }));
+      await Promise.all(calls);
+      dns = found;
     }
 
     // Registries throttle bursts, so RDAP goes a few at a time, most alike first
     const rdaps: (DnsResult["rdap"] | undefined)[] = new Array(items.length);
-    const wanted = items.map((_, i) => i).filter((i) => dns[i]!.checked).slice(0, rdapLeft);
+    // RDAP is one request per name against a small budget. It is worth asking for a registered name (who holds it)
+    // and for one that could be registered (is it really free). A name DNS cannot find and the registry would refuse
+    // cannot be registered, so asking adds nothing.
+    const wanted = items.map((_, i) => i)
+      .filter((i) => dns[i]!.checked && (dns[i]!.registered || items[i]!.registrable !== false))
+      .slice(0, rdapLeft);
     rdapLeft -= wanted.length;
     for (let k = 0; k < wanted.length; k += RDAP_CONCURRENCY) {
       await Promise.all(wanted.slice(k, k + RDAP_CONCURRENCY).map(async (i) => {
@@ -165,14 +229,16 @@ export function createDohResolver(): DnsResolver {
       const d = dns[i]!;
       const rdap = rdaps[i];
       const registered = d.registered || rdap?.registered === true;
-      const threatLevel: DnsResult["threatLevel"] = d.hasMx ? "active" : registered ? "parked" : "unregistered";
+      // Set up for email either way: mail servers to receive it, or an SPF record authorising senders
+      const threatLevel: DnsResult["threatLevel"] = registered && (d.hasMx || authorisesSenders(d.spf)) ? "active"
+        : registered ? "parked" : "unregistered";
       const { checked, ...rest } = d;
       it.done({ ...rest, registered, threatLevel, ...(checked ? {} : { checked: false }), ...(rdap ? { rdap } : {}) });
     }));
   }
 
   return {
-    resolve(domain: string): Promise<DnsResult> {
+    resolve(domain: string, hint?: ResolveHint): Promise<DnsResult> {
       return new Promise((done) => {
         if (queue.length === 0) {
           // Gather every name asked for in this turn, then look them all up together
@@ -182,39 +248,9 @@ export function createDohResolver(): DnsResolver {
             void flush(items);
           }, 0);
         }
-        queue.push({ ascii: domainToASCII(domain) || domain, done });
+        queue.push({ ascii: domainToASCII(domain) || domain, registrable: hint?.registrable, done });
       });
     },
   };
 }
 
-/**
- * Registrars that hold names for brands (corporate and brand-protection registrars). A lookalike held through one of
- * these is most likely the brand defending itself. Meta runs two, RegistrarSafe and RegistrarSEC.
- */
-const BRAND_PROTECTION_REGISTRARS = [
-  "markmonitor", "csc corporate domains", "com laude", "nom-iq", "registrarsafe", "registrarsec", "safenames",
-  "corsearch", "brandsight", "lexsynergy", "ascio", "clarivate",
-];
-// Amazon Registrar and Google (now Squarespace) are left out: anyone can register through them, attackers included.
-/** Groups of registrars run by one company, which a brand may use side by side. */
-const REGISTRAR_FAMILIES = [["registrarsafe", "registrarsec"], ["com laude", "nom-iq"]];
-
-const norm = (r: string) => r.toLowerCase().replace(/[.,]/g, " ").replace(/\b(inc|llc|ltd|limited|corp|corporation|dba|uab|gmbh)\b/g, " ").replace(/\s+/g, " ").trim();
-
-/**
- * Whether a registered lookalike is probably the brand's own. A brand-protection registrar (MarkMonitor and the like)
- * serves brands only, so its name counts on its own. A shared registrar does not: most small brands use GoDaddy or
- * Namecheap, and so do attackers. It counts only when the lookalike also shares a name server with the real domain,
- * which a stranger cannot arrange.
- */
-export function registrarHolder(brandRegistrar: string | undefined, registrar: string, sharesNameServer = false): NonNullable<DnsResult["holder"]> {
-  const r = norm(registrar);
-  if (BRAND_PROTECTION_REGISTRARS.some((x) => r.includes(x))) return "brand-protection-registrar";
-  if (brandRegistrar && sharesNameServer) {
-    const b = norm(brandRegistrar);
-    if (r === b || r.includes(b) || b.includes(r)) return "brand-registrar";
-    if (REGISTRAR_FAMILIES.some((f) => f.some((x) => r.includes(x)) && f.some((x) => b.includes(x)))) return "brand-registrar";
-  }
-  return "other-registrar";
-}

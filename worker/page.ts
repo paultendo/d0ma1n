@@ -207,12 +207,12 @@ function homeReport(): string {
 <section class="sec reveal-up" id="report">
   <div class="sec-head"><div>
     <h2>The report</h2>
-    <p class="lede">A scan lists registered lookalikes first, including any with mail servers, since those can send phishing email. Next come the ones still available to register, then the ones no registry would accept. Each result names the swapped character and, where it was measured, the font in which it is hardest to spot.</p>
+    <p class="lede">A scan lists registered lookalikes first, starting with any set up to receive email, since replies to a phishing message would reach whoever holds them. Next come the ones still available to register, then the ones no registry would accept. Each result names the swapped character and, where it was measured, the font in which it is hardest to spot.</p>
     <p class="lede">Open tools such as <a href="https://github.com/elceef/dnstwist">dnstwist</a> can already list lookalikes of any domain. What d0ma1n adds is which of them a reader would fall for, which a registry would sell, and who holds the ones already taken.</p>
   </div></div>
   <div class="window">
     <div class="window-bar" data-glass="8"><i></i><i></i><i></i><span class="window-url">d0ma1n.app/scan/paypal.com</span></div>
-    <div class="window-body"><div id="preview"><div class="loading" role="status"><div class="wordmark-loader" aria-hidden="true"><svg width="0" height="0" style="position:absolute"><filter id="wl-goo"><feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 28 -12"/></filter></svg><span class="wl-fold wl-1ch">d</span><span class="wl-swap"><i>o</i><b>0</b></span><span class="wl-fold wl-2ch">ma</span><span class="wl-swap"><i>i</i><b>1</b></span><span class="wl-fold wl-1ch">n</span></div><p>Loading a live scan&hellip;</p></div></div></div>
+    <div class="window-body" data-glass="14" data-glass-mode="content"><div id="preview"><div class="loading" role="status"><div class="wordmark-loader" aria-hidden="true"><svg width="0" height="0" style="position:absolute"><filter id="wl-goo"><feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 28 -12"/></filter></svg><span class="wl-fold wl-1ch">d</span><span class="wl-swap"><i>o</i><b>0</b></span><span class="wl-fold wl-2ch">ma</span><span class="wl-swap"><i>i</i><b>1</b></span><span class="wl-fold wl-1ch">n</span></div><p>Loading a live scan&hellip;</p></div></div></div>
   </div>
   <div class="window-caption"><span>Live scan of paypal.com</span><a href="/scan/paypal.com">Open the full report</a></div>
 </section>`;
@@ -563,6 +563,11 @@ const STYLES = `<style>
   .danger-mid { background: color-mix(in srgb, var(--danger-mid) 16%, transparent); color: var(--danger-mid); }
   .danger-low { background: color-mix(in srgb, var(--danger-low) 16%, transparent); color: var(--danger-low); }
   .nowrap { white-space: nowrap; }
+  .swap-note .recent { color: var(--danger-high); font-weight: 600; }
+  .swap-note a { color: var(--accent); }
+  .swap-note .report-btn { display: inline-block; margin-top: 0.3rem; padding: 0.2rem 0.65rem; border-radius: 9999px; text-decoration: none;
+    font-weight: 500; background: rgba(233, 240, 255, 0.7); box-shadow: inset 0 1px 0 #fff, inset 0 0 0 1px rgba(31, 90, 240, 0.22); }
+  .swap-note .report-btn:hover { background: rgba(214, 226, 255, 0.9); }
   .danger-badge.unmeasured { background: var(--bg-soft); color: var(--text-dim); font-weight: 500; white-space: nowrap; }
 
   .threat-active {
@@ -598,6 +603,15 @@ const STYLES = `<style>
     color: var(--text-dim);
   }
   .legend strong { color: var(--text); font-weight: 600; }
+  /* The key to a report's columns: three short definitions side by side, under a hairline */
+  .legend-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem 2rem; margin: 2.25rem 0 0;
+    padding-top: 1.5rem; border-top: 1px solid var(--border); }
+  .legend-grid dt { font-size: 0.85rem; font-weight: 600; color: var(--text); margin-bottom: 0.35rem; }
+  .legend-grid dd { margin: 0; font-size: 0.85rem; line-height: 1.55; color: var(--text-dim); text-wrap: pretty; }
+  .legend-grid em { font-style: normal; color: var(--text); }
+  .report-actions { margin-top: 1.5rem; }
+  .report-actions .next { display: inline-block; text-decoration: none; font-size: 0.9rem; }
+  @media (max-width: 768px) { .legend-grid { grid-template-columns: 1fr; gap: 1.1rem; } }
   .results-table td > .punycode {
     margin-top: 4px;
     font-size: 0.7rem;
@@ -734,6 +748,7 @@ const STYLES = `<style>
   /* Glass surfaces: each [data-glass] element gets its own displacement map (built in HOME_SCRIPT, sized to it), so
      what passes under its rim bends, with a faint prism fringe. Chromium only; elsewhere they keep their own look. */
   .lg-ok [data-glass] { backdrop-filter: var(--lg) saturate(1.5); }
+  .lg-ok [data-glass][data-glass-mode="content"] { backdrop-filter: none; filter: var(--lg); }
   .lg-ok .plate {
     background: rgba(255, 255, 255, 0.5);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.55),
@@ -1054,8 +1069,10 @@ const STYLES = `<style>
   .board-note { margin-top: 1.5rem; font-size: 0.98rem; color: var(--text-dim); }
 
   /* Report preview: a product window */
-  .window { border-radius: 10px; overflow: hidden; background: #fff; position: relative;
-    box-shadow: 0 50px 100px -20px rgba(50, 50, 93, 0.25), 0 30px 60px -30px rgba(0, 0, 0, 0.3); }
+  /* A glass rim (a bright inner edge over a hairline) with a soft, short shadow, rather than a heavy drop */
+  .window { border-radius: 12px; overflow: hidden; background: #fff; position: relative;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.6),
+      0 0 0 1px rgba(11, 27, 51, 0.07), 0 18px 36px -18px rgba(50, 50, 93, 0.22), 0 4px 10px -4px rgba(0, 0, 0, 0.06); }
   /* The toolbar floats over the report, which scrolls slowly underneath it */
   .window-bar { position: absolute; z-index: 2; top: 10px; left: 10px; right: 10px; display: flex; align-items: center; gap: 0.45rem;
     padding: 0.6rem 0.9rem; border-radius: 14px; background: rgba(246, 248, 251, 0.94); border: 1px solid var(--border); }
@@ -1065,10 +1082,10 @@ const STYLES = `<style>
   .window-bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--border-strong); }
   .window-url { margin-left: 0.8rem; font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-dim);
     background: #fff; border: 1px solid var(--border); padding: 0.25rem 0.9rem; border-radius: 9999px; flex: 1; max-width: 26rem; }
-  .window-body { padding: 0 2rem; height: 34rem; overflow: hidden; position: relative; }
+  .window-body { padding: 0 2rem; height: 34rem; overflow: hidden; position: relative; border-radius: inherit; background: #fff; }
   .window-body #preview { padding: 5rem 0 3rem; will-change: transform; }
   .result-window { margin-top: 0.5rem; }
-  .result-body { padding: 5rem 2rem 2rem; }
+  .result-body { padding: 5rem 2rem 2rem; background: #fff; border-radius: inherit; }
   @media (max-width: 768px) { .result-body { padding: 4.5rem 1rem 1.25rem; } }
   .window-body::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 6rem; background: linear-gradient(rgba(255,255,255,0), #fff); }
   .window-body #preview { margin: 0; }
@@ -1236,9 +1253,13 @@ const SCRIPT = `<script>
       if (old) old.remove();
       var f = el('filter', { id: id, x: 0, y: 0, width: '100%', height: '100%', 'color-interpolation-filters': 'sRGB' }, defs);
       var map = el('feImage', { x: 0, y: 0, width: 1, height: 1, preserveAspectRatio: 'none', result: 'map' }, f);
-      el('feGaussianBlur', { 'in': 'SourceGraphic', stdDeviation: 1, result: 'frost' }, f);
+      // A curved cover glass over the element's own content (the report window): its edges bend what is inside them,
+      // with the same faint fringe but no frost, so the content stays sharp
+      var content = node.getAttribute('data-glass-mode') === 'content', bend = content ? 1.6 : 1;
+      if (content) el('feOffset', { 'in': 'SourceGraphic', dx: 0, dy: 0, result: 'frost' }, f);
+      else el('feGaussianBlur', { 'in': 'SourceGraphic', stdDeviation: 1, result: 'frost' }, f);
       [['mid', 1], ['dr', 1 - SPREAD], ['db', 1 + SPREAD]].forEach(function (d) {
-        el('feDisplacementMap', { 'in': 'frost', in2: 'map', scale: SCALE * d[1], xChannelSelector: 'R', yChannelSelector: 'G', result: d[0] }, f);
+        el('feDisplacementMap', { 'in': 'frost', in2: 'map', scale: SCALE * bend * d[1], xChannelSelector: 'R', yChannelSelector: 'G', result: d[0] }, f);
       });
       channel(f, 'dr', '1 0 0 0 0 0 0 0 0 0 0 0 0 0 0', 'r');
       channel(f, 'mid', '0 0 0 0 0 0 1 0 0 0 0 0 0 0 0', 'g');
@@ -1268,7 +1289,16 @@ const SCRIPT = `<script>
           var d = ol + Math.min(Math.max(qx, qy), 0) - r, nx, ny;
           if (qx > 0 && qy > 0) { nx = ox / ol * Math.sign(p0); ny = oy / ol * Math.sign(p1); }
           else if (qx > qy) { nx = Math.sign(p0); ny = 0; } else { nx = 0; ny = Math.sign(p1); }
-          var k = Math.exp(Math.min(0, d) / band * 2.2) * Math.min(1, Math.max(0, -d - 0.5)), i = (y * w + x) * 4;
+          var k, i = (y * w + x) * 4;
+          if (content) {
+            // A curved edge compresses what is under it: a pixel at depth x shows the content at x + h(x), where
+            // h = c.x.(1 - x/rim)^2 is zero at the edge and at the rim's inner side, so the content squeezes into the
+            // edge and eases back to flat, and every sample comes from inside the window
+            var rim = band * 1.3, t = Math.min(1, Math.max(0, -d) / rim);
+            k = Math.min(1, (2 * 0.9 * Math.max(0, -d) * (1 - t) * (1 - t)) / (SCALE * bend));
+          } else {
+            k = Math.exp(Math.min(0, d) / band * 2.2) * Math.min(1, Math.max(0, -d - 0.5));
+          }
           px[i] = 128 - 127 * nx * k; px[i + 1] = 128 - 127 * ny * k; px[i + 2] = 128; px[i + 3] = 255;
         }
         g.putImageData(img, 0, 0);
@@ -1305,7 +1335,7 @@ async function doScan() {
   let target = results;
   if (document.body.classList.contains('home')) {
     results.innerHTML = '<div class="window result-window"><div class="window-bar" data-glass="8"><i></i><i></i><i></i>' +
-      '<span class="window-url">d0ma1n.app/scan/' + escHtml(domain) + '</span></div><div class="result-body"></div></div>';
+      '<span class="window-url">d0ma1n.app/scan/' + escHtml(domain) + '</span></div><div class="result-body" data-glass="14" data-glass-mode="content"></div></div>';
     target = results.querySelector('.result-body');
     if (window.glassify) window.glassify(results);
   }
@@ -1334,7 +1364,11 @@ async function doScan() {
   }
 }
 
+// The domain the rendered report is about, for the reports it helps write
+let scanOriginal = '';
+
 function renderResults(data, container) {
+  scanOriginal = data.original;
   const byDanger = (a, b) => b.dangerScore - a.dangerScore;
   const active = data.variants.filter(v => v.dns && v.dns.threatLevel === 'active');
   const registered = data.variants.filter(v => v.dns && v.dns.registered).sort(byDanger);
@@ -1353,15 +1387,15 @@ function renderResults(data, container) {
   html += '<h2 style="font-size:1.25rem;margin-bottom:0.5rem">Threat report for ' + escHtml(data.original) + '</h2>';
   const count = (n, label, hot) => '<span' + (hot ? ' class="hot"' : '') + '><b>' + n + '</b> ' + label + '</span>';
   const counts = [count(data.variants.length, data.variants.length === 1 ? 'lookalike' : 'lookalikes')];
-  const heldByBrand = registered.filter(v => v.dns.holder === 'brand-registrar' || v.dns.holder === 'brand-protection-registrar').length;
-  if (registered.length - heldByBrand > 0) counts.push(count(registered.length - heldByBrand, 'registered by someone else', true));
+  const heldByBrand = registered.filter(v => v.dns.holder && v.dns.holder !== 'other-registrar').length;
+  if (registered.length - heldByBrand > 0) counts.push(count(registered.length - heldByBrand, 'probably held by someone else', true));
   if (heldByBrand > 0) counts.push(count(heldByBrand, 'probably held by the brand'));
-  if (active.length > 0) counts.push(count(active.length, 'with mail servers', true));
+  if (active.length > 0) counts.push(count(active.length, 'set up for email', true));
   counts.push(count(available.length, 'could be registered'));
   if (unchecked.length) counts.push(count(unchecked.length, 'not checked'));
   if (blocked.length > 0) counts.push(count(blocked.length, 'blocked by registry rules'));
   html += '<div class="results-meta"><span class="seg">' + counts.join('') + '</span></div>';
-  html += '<p class="explainer">Each lookalike swaps a letter of your domain for a different Unicode character that looks almost the same. ';
+  html += '<p class="explainer">Each lookalike swaps a letter of your domain for one that looks almost the same: a different Unicode character, or ordinary letters that pass for it, like rn for m. ';
   html += 'The swapped letter is <mark class="diff">highlighted</mark>, with your real domain underneath for comparison.</p>';
   // Chrome catches some lookalikes in its address bar, by rules this report does not model in full, so it makes no count
   if (data.variants.length) html += '<p class="explainer">Browsers show some lookalikes in their xn-- form in the address bar, after the click. In an email or a chat message, a link reads however the sender typed it.</p>';
@@ -1369,28 +1403,32 @@ function renderResults(data, container) {
 
   if (active.length > 0) {
     html += '<div class="alert-banner">';
-    html += '<strong>' + (active.length === 1 ? '1 lookalike has' : active.length + ' lookalikes have') + ' mail servers.</strong> ';
-    html += 'They can receive email, so replies to a phishing message would reach whoever holds them. ';
+    const sending = active.filter(v => sendNote(v.dns.spf)).length, receiving = active.filter(v => v.dns.hasMx).length;
+    const many = (n, one, more) => n === 1 ? one : more.replace('#', n);
+    html += '<strong>' + many(active.length, '1 lookalike is', '# lookalikes are') + ' set up for email.</strong> ';
+    if (sending) html += many(sending, '1 is authorised to send it. ', '# are authorised to send it. ');
+    if (receiving) html += many(receiving, '1 has mail servers, so replies to a phishing message would reach whoever holds it. ', '# have mail servers, so replies to a phishing message would reach whoever holds them. ');
     html += 'If the brand is yours, you can <a href="https://www.icann.org/resources/pages/help/dndr/udrp-en" style="color:var(--danger-high);text-decoration:underline">file a UDRP complaint</a> or report it to the registrar.';
     html += '</div>';
   }
 
   // A lookalike held through the brand's own registrar, or a brand-protection registrar, is most likely the brand's
-  const isBrands = v => v.dns.holder === 'brand-registrar' || v.dns.holder === 'brand-protection-registrar';
+  const isBrands = v => v.dns.holder && v.dns.holder !== 'other-registrar';
   const elsewhere = registered.filter(v => !isBrands(v));
   const brands = registered.filter(isBrands);
   // Registrar names often end in a full stop ("MarkMonitor Inc."); drop it so sentences don't end in two
   const own = data.originalRegistration && data.originalRegistration.registrar && data.originalRegistration.registrar.replace(/\.$/, '');
   if (elsewhere.length > 0) {
-    html += section('Registered by someone else (' + elsewhere.length + ')', 'var(--danger-high)',
-      (own ? escHtml(data.original) + ' is registered through ' + escHtml(own) + '. These are registered through other registrars, or the registry would not say. '
-        : 'These are registered, and nothing suggests the brand holds them. ') + 'Check what they point to.');
+    // What the data shows, not a claim about everything it might have missed
+    html += section('Probably held by someone else (' + elsewhere.length + ')', 'var(--danger-high)',
+      'Their registrars, name servers and email records differ from ' + escHtml(data.original) + '&rsquo;s' +
+      (own ? ' (registered through ' + escHtml(own) + ')' : '') + ', which suggests someone other than the brand holds them. Check what they point to.');
     html += renderVariantTable(elsewhere, data.original);
   }
   if (brands.length > 0) {
     html += section('Probably held by the brand (' + brands.length + ')', 'var(--text-dim)',
-      'Registered through a registrar that only serves brands' + (own ? ', or through ' + escHtml(own) + ' (as ' + escHtml(data.original) + ' is) with the same name servers' : '') +
-      '. That usually means the brand registered them to keep them out of other hands. The same registrar alone is not enough: attackers use popular registrars too.');
+      'Each shows why: a registrar that only serves brands, name servers only the brand could have set, or the same registrar as ' + escHtml(data.original) +
+      ' along with something only its holder could share. The brand most likely registered them to keep them out of other hands. The same registrar alone is not enough: attackers use popular registrars too.');
     html += renderVariantTable(brands, data.original);
   }
 
@@ -1414,13 +1452,13 @@ function renderResults(data, container) {
     html += renderVariantTable(blocked, data.original);
   }
 
-  html += '<p class="legend"><strong>Similarity</strong>: how widely the swapped character passes for the original, from confusable-vision&rsquo;s measurements on macOS fonts and Roboto. Where fonts include both characters, it is the share of text fonts in which they look alike, and the font named under it is where they are closest. Many characters are missing from common fonts, so the browser borrows them from a fallback font; for those, it is the share of font pairings in which the borrowed glyph passes, marked &ldquo;via a fallback font&rdquo;. Where several letters are swapped, it is the weakest swap&rsquo;s figure. ';
-  html += '<strong>Swapped in</strong>: where the replacement character comes from in Unicode, as its script and block. None of them is the ordinary letter it imitates, even when the script is Latin. ';
-  html += 'The <span class="punycode">xn--</span> form under each lookalike is how it is actually registered and how it appears in DNS, certificates and blocklists.</p>';
-
-  html += '<div style="margin-top:1rem;display:flex;gap:0.75rem;align-items:center">';
-  html += '<a href="/api/scan?domain=' + encodeURIComponent(data.original) + '&top=50" download="' + data.original + '-threat-report.json" style="color:var(--accent-bright);font-size:0.85rem">Download threat report (JSON)</a>';
-  html += '</div>';
+  // A key to the columns, one short definition each, and the report as data
+  html += '<dl class="legend-grid">' +
+    '<div><dt>Similarity</dt><dd>The share of text fonts where the swapped character passes for the original (confusable-vision, on macOS fonts and Roboto). Under it, the closest font, or <em>via a fallback font</em> when the browser borrows the character. With several swaps, the weakest counts.</dd></div>' +
+    '<div><dt>Swapped in</dt><dd>Where the replacement comes from in Unicode: its script and block. Outside ASCII it is never the ordinary letter it imitates, even when the script is Latin. ASCII lookalikes are ordinary letters and digits, like rn for m.</dd></div>' +
+    '<div><dt><span class="punycode">xn--</span> form</dt><dd>How the lookalike is actually registered, and how it appears in DNS, certificates and blocklists.</dd></div>' +
+    '</dl>';
+  html += '<div class="report-actions"><a class="next" data-glass="8" href="/api/scan?domain=' + encodeURIComponent(data.original) + '&top=50" download="' + escHtml(data.original) + '-lookalikes.json">Download as JSON</a></div>';
 
   container.innerHTML = html;
 }
@@ -1432,8 +1470,126 @@ function section(title, color, blurb) {
 
 // Script alone misleads ("Latin" reads as ordinary letters); the Unicode block says what kind of character it is
 function charKind(s) {
-  if (!s.block) return s.script;
+  // Ordinary letters and digits (rn for m, 1 for l) are just that
+  if (s.block === 'Basic Latin') return ['ASCII'];
+  if (!s.block) return [s.script];
   return s.block.startsWith(s.script) ? [s.block] : [s.script, s.block];
+}
+
+// Who handles a lookalike's mail, from its MX records. A known service is named, with what kind of service it is where
+// that is certain: "forwarded" only for services that do nothing else. Otherwise the mail server's domain is shown,
+// or that the lookalike runs its own.
+const MAIL_SERVICES = [
+  // Mailboxes
+  ['box', /(^|\\.)(google|googlemail)\\.com$/, 'Google Workspace'], ['box', /(^|\\.)outlook\\.com$/, 'Microsoft 365'],
+  ['box', /(^|\\.)icloud\\.com$/, 'iCloud Mail'], ['box', /(^|\\.)yahoodns\\.net$/, 'Yahoo Mail'],
+  ['box', /(^|\\.)protonmail\\.ch$/, 'Proton Mail'], ['box', /(^|\\.)(messagingengine|fastmail)\\.com$/, 'Fastmail'],
+  ['box', /(^|\\.)zoho\\.(com|eu|in|jp|com\\.au)$/, 'Zoho Mail'], ['box', /(^|\\.)gmx\\.(net|com|de)$/, 'GMX'],
+  ['box', /(^|\\.)web\\.de$/, 'WEB.DE'], ['box', /(^|\\.)mail\\.com$/, 'mail.com'], ['box', /(^|\\.)mailbox\\.org$/, 'mailbox.org'],
+  ['box', /(^|\\.)posteo\\.de$/, 'Posteo'], ['box', /(^|\\.)runbox\\.com$/, 'Runbox'], ['box', /(^|\\.)tutanota\\.de$/, 'Tuta'],
+  ['box', /(^|\\.)migadu\\.com$/, 'Migadu'], ['box', /(^|\\.)titan\\.email$/, 'Titan'], ['box', /(^|\\.)privateemail\\.com$/, 'Namecheap Private Email'],
+  ['box', /(^|\\.)emailsrvr\\.com$/, 'Rackspace Email'], ['box', /(^|\\.)hostedemail\\.com$/, 'Tucows Email'],
+  ['box', /(^|\\.)yandex\\.(net|ru)$/, 'Yandex'], ['box', /(^|\\.)mail\\.ru$/, 'Mail.ru'], ['box', /(^|\\.)seznam\\.cz$/, 'Seznam'],
+  ['box', /(^|\\.)naver\\.com$/, 'Naver'], ['box', /(^|\\.)hanmail\\.net$/, 'Daum'], ['box', /(^|\\.)qq\\.com$/, 'Tencent'],
+  ['box', /(^|\\.)mxhichina\\.com$/, 'Alibaba Mail'], ['box', /(^|\\.)163\\.com$/, 'NetEase'],
+  ['box', /(^|\\.)orange\\.fr$/, 'Orange'], ['box', /(^|\\.)free\\.fr$/, 'Free'],
+  // Hosting companies and registrars (mailboxes or forwarding, not always telling which)
+  ['host', /(^|\\.)secureserver\\.net$/, 'GoDaddy'], ['host', /(^|\\.)hostinger\\.com$/, 'Hostinger'],
+  ['host', /(^|\\.)(ionos\\.[a-z.]+|kundenserver\\.de)$/, 'IONOS'], ['host', /(^|\\.)ovh\\.net$/, 'OVH'],
+  ['host', /(^|\\.)gandi\\.net$/, 'Gandi'], ['host', /(^|\\.)dreamhost\\.com$/, 'DreamHost'],
+  ['host', /(^|\\.)your-server\\.de$/, 'Hetzner'], ['host', /(^|\\.)rzone\\.de$/, 'Strato'], ['host', /(^|\\.)one\\.com$/, 'one.com'],
+  ['host', /(^|\\.)infomaniak\\.ch$/, 'Infomaniak'], ['host', /(^|\\.)hostpoint\\.ch$/, 'Hostpoint'], ['host', /(^|\\.)aruba\\.it$/, 'Aruba'],
+  ['host', /(^|\\.)register\\.it$/, 'Register.it'], ['host', /(^|\\.)mailspamprotection\\.com$/, 'SiteGround'],
+  // Forwarding only: mail is passed on to an inbox somewhere else
+  ['fwd', /(^|\\.)mx\\.cloudflare\\.net$/, 'Cloudflare Email Routing'], ['fwd', /(^|\\.)improvmx\\.com$/, 'ImprovMX'],
+  ['fwd', /(^|\\.)forwardemail\\.net$/, 'Forward Email'], ['fwd', /(^|\\.)eforward\\d*\\.registrar-servers\\.com$/, 'Namecheap'],
+  ['fwd', /(^|\\.)fwd\\d*\\.porkbun\\.com$/, 'Porkbun'],
+  // Services built for sending and receiving mail at volume
+  ['bulk', /(^|\\.)mailgun\\.org$/, 'Mailgun'], ['bulk', /(^|\\.)sendgrid\\.net$/, 'SendGrid'],
+  ['bulk', /(^|\\.)sparkpostmail\\.com$/, 'SparkPost'], ['bulk', /(^|\\.)postmarkapp\\.com$/, 'Postmark'],
+  ['bulk', /(^|\\.)mailersend\\.net$/, 'MailerSend'], ['bulk', /(^|\\.)mandrillapp\\.com$/, 'Mandrill'],
+  ['bulk', /(^|\\.)(amazonses\\.com|inbound-smtp\\.[a-z0-9-]+\\.amazonaws\\.com)$/, 'Amazon SES'],
+  // Mail filtering, which sits in front of a company's own mail
+  ['filter', /(^|\\.)mimecast\\.com$/, 'Mimecast'], ['filter', /(^|\\.)(pphosted|ppe-hosted)\\.com$/, 'Proofpoint'],
+  ['filter', /(^|\\.)barracudanetworks\\.com$/, 'Barracuda'], ['filter', /(^|\\.)iphmx\\.com$/, 'Cisco Secure Email'],
+  ['filter', /(^|\\.)trendmicro\\.(com|eu)$/, 'Trend Micro'], ['filter', /(^|\\.)sophos\\.com$/, 'Sophos'],
+  ['filter', /(^|\\.)messagelabs\\.com$/, 'Symantec Email Security'], ['filter', /(^|\\.)mailcontrol\\.com$/, 'Forcepoint'],
+  ['filter', /(^|\\.)hornetsecurity\\.com$/, 'Hornetsecurity'], ['filter', /(^|\\.)spamexperts\\.(com|net|eu)$/, 'N-able Mail Assure'],
+  ['filter', /(^|\\.)mailchannels\\.net$/, 'MailChannels'],
+];
+const MAIL_KIND = {
+  box: n => 'Mail through ' + n, host: n => 'Mail through ' + n, fwd: n => 'Mail forwarded by ' + n,
+  bulk: n => 'Mail through ' + n + ', a bulk email service', filter: n => 'Mail filtered by ' + n,
+};
+function mailNote(mx, domain) {
+  const hosts = (mx || []).filter(m => m.exchange && m.exchange !== '.').sort((a, b) => a.priority - b.priority).map(m => m.exchange.toLowerCase());
+  if (!hosts.length) return 'Mail servers set up';
+  const known = MAIL_SERVICES.find(([, re]) => hosts.some(h => re.test(h)));
+  if (known) return escHtml(MAIL_KIND[known[0]](known[2]));
+  // The lookalike's own mail server (mail.<the lookalike>): someone set up mail on purpose
+  const ascii = (domain || '').toLowerCase();
+  if (hosts.some(h => h === ascii || h.endsWith('.' + ascii))) return 'Runs its own mail server';
+  return 'Mail through ' + escHtml(hosts[0].split('.').slice(-2).join('.'));
+}
+
+// A registered lookalike's status: a label, then one short fact per line, from DNS and the registry's record
+function registeredStatus(v) {
+  const d = v.dns, rd = d.rdap || {}, st = rd.status || [];
+  const onHold = st.some(x => /^(client|server)Hold$/.test(x));
+  const leaving = st.some(x => /^(pendingDelete|redemptionPeriod)$/.test(x));
+  const label = onHold ? ['threat-none', 'Suspended']
+    : leaving ? ['threat-none', 'Expiring']
+    : d.threatLevel === 'active' ? ['threat-active', 'Registered, set up for email']
+    : d.parking ? ['threat-parked', 'Parked']
+    : ['threat-parked', 'Registered'];
+  const facts = [];
+  if (onHold) facts.push('On hold at the registry, usually after an abuse report');
+  if (leaving) facts.push('Being deleted, so it may soon be free to register');
+  if (d.parking) facts.push('Parked with ' + escHtml(d.parking) + ', often for sale');
+  if (rd.since) {
+    const days = Math.floor((Date.now() - Date.parse(rd.since)) / 864e5);
+    // A lookalike registered in the last two months is one of the strongest signs of a campaign
+    facts.push(days >= 0 && days < 60 ? '<span class="recent">Registered ' + (days === 0 ? 'today' : days === 1 ? 'yesterday' : days + ' days ago') + '</span>'
+      : 'Since ' + escHtml(rd.since));
+  }
+  // When the registrar is itself the reason, say so on its line rather than twice
+  const byRegistrar = d.holderReason && /^Registered through a registrar/.test(d.holderReason);
+  if (rd.registrar) facts.push('Through ' + escHtml(rd.registrar) + (byRegistrar ? ', which only serves brands' : ''));
+  if (d.holderReason && !(byRegistrar && rd.registrar)) facts.push(escHtml(d.holderReason));
+  if (d.hasMx) facts.push(mailNote(d.mx, v.punycode));
+  const sends = sendNote(d.spf);
+  if (sends) facts.push(sends + (d.dmarc ? ', with DMARC' : ''));
+  // "v=spf1 -all": the holder declares the domain sends no mail, the usual defensive set-up
+  else if (d.spf) facts.push('Declares it sends no email');
+  if (!d.parking) facts.push(d.a && d.a.length ? 'Has a website' : 'No website');
+  if (rd.abuse && d.holder === 'other-registrar' && !onHold) facts.push(reportLink(v, rd));
+  return '<span class="' + label[0] + '">' + label[1] + '</span>' + facts.map(f => '<div class="swap-note">' + f + '</div>').join('');
+}
+
+// A report to the registrar's abuse desk, written for them: the lookalike, what it imitates, and the evidence. The
+// address is public (the registry's RDAP record publishes it); the button saves writing the report.
+function reportLink(v, rd) {
+  const d = v.dns, original = scanOriginal || '';
+  const who = (rd.registrar || 'the registrar').replace(/,? *(Inc|LLC|Ltd|Limited|UAB|GmbH)\\.?$/i, '').replace(/\\.$/, '');
+  const evidence = [];
+  if (d.hasMx) evidence.push('It has mail servers (' + mailNote(d.mx, v.punycode).replace(/<[^>]+>/g, '') + ').');
+  if (sendNote(d.spf)) evidence.push('Its SPF record authorises it to send email.');
+  if (d.a && d.a.length) evidence.push('It resolves to a website.');
+  if (rd.since) evidence.push('It was registered on ' + rd.since + '.');
+  const swaps = [...new Set(v.substitutions.map(x => x.original + ' \\u2192 ' + x.replacement + ' (' + x.codepoint + ')'))].join(', ');
+  const body = 'Hello,\\n\\nI would like to report a domain that imitates ' + original + ':\\n\\n  ' + v.domain + '  (' + v.punycode + ')\\n\\n' +
+    'It swaps letters of ' + original + ' for characters that look almost the same: ' + swaps + '.\\n' +
+    (evidence.length ? evidence.join('\\n') + '\\n' : '') + '\\nThe full report: https://d0ma1n.app/scan/' + encodeURIComponent(original) + '\\n\\nThank you.';
+  const href = 'mailto:' + rd.abuse + '?subject=' + encodeURIComponent('Lookalike of ' + original + ': ' + v.punycode) + '&body=' + encodeURIComponent(body);
+  return 'Concerned? <a class="report-btn" href="' + escHtml(href) + '" title="' + escHtml(rd.abuse) + '">Report it to ' + escHtml(who) + '</a>';
+}
+
+// Whether an SPF record authorises anyone to send, and through which service: "v=spf1 -all" alone sends nothing
+function sendNote(spf) {
+  if (!spf || !/\\s(\\+?(include:|a\\b|a:|mx\\b|mx:|ip4:|ip6:|exists:)|redirect=)/i.test(' ' + spf)) return '';
+  const includes = [...spf.matchAll(/(?:include:|redirect=)([^\\s]+)/gi)].map(m => m[1].toLowerCase());
+  const known = MAIL_SERVICES.find(([, re]) => includes.some(h => re.test(h)));
+  return 'Authorised to send email' + (known ? ' through ' + escHtml(known[2]) : '');
 }
 
 // Why the registry refuses a lookalike, from the policy engine's notes
@@ -1455,17 +1611,8 @@ function renderVariantTable(variants, original) {
     const isRegistered = v.dns && v.dns.registered;
 
     let status;
-    if (v.dns && v.dns.threatLevel === 'active') {
-      status = '<span class="threat-active">Registered, with mail</span><div class="swap-note">Mail servers set up' +
-        (v.dns.rdap && v.dns.rdap.registrar ? ', registered through ' + escHtml(v.dns.rdap.registrar) : '') + '</div>';
-    } else if (isRegistered) {
-      status = '<span class="threat-parked">Registered</span>';
-      const rd = v.dns.rdap;
-      if (rd && (rd.since || rd.registrar)) {
-        status += '<div class="swap-note">' + (rd.since ? 'Since ' + escHtml(rd.since) : 'Registered') +
-          (rd.registrar ? ', through ' + escHtml(rd.registrar) : '') + '</div>';
-      }
-    } else if (v.policy && !v.policy.registrable) {
+    if (isRegistered) status = registeredStatus(v);
+    else if (v.policy && !v.policy.registrable) {
       status = '<span class="threat-none">Can&rsquo;t be registered</span><div class="swap-note">' + escHtml(refusal(v)) + '</div>';
     } else {
       const checked = v.dns && v.dns.checked !== false;
@@ -1509,8 +1656,13 @@ function renderVariantTable(variants, original) {
 function markDiff(a, b) {
   const ac = Array.from(a);
   const bc = Array.from(b);
-  if (ac.length !== bc.length) return escHtml(a);
-  return ac.map((c, i) => c === bc[i] ? escHtml(c) : '<mark class="diff">' + escHtml(c) + '</mark>').join('');
+  if (ac.length === bc.length) return ac.map((c, i) => c === bc[i] ? escHtml(c) : '<mark class="diff">' + escHtml(c) + '</mark>').join('');
+  // Different lengths (rn for m): mark what lies between the shared start and the shared end
+  let p = 0;
+  while (p < ac.length && p < bc.length && ac[p] === bc[p]) p++;
+  let q = 0;
+  while (q < ac.length - p && q < bc.length - p && ac[ac.length - 1 - q] === bc[bc.length - 1 - q]) q++;
+  return escHtml(ac.slice(0, p).join('')) + '<mark class="diff">' + escHtml(ac.slice(p, ac.length - q).join('')) + '</mark>' + escHtml(ac.slice(ac.length - q).join(''));
 }
 
 function escHtml(s) {

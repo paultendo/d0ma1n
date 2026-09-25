@@ -16,6 +16,10 @@ export type RawVariant = {
   fullReplacement?: boolean;
   /** A mixed-script probe: reported only if it turns out to be registered. */
   probe?: boolean;
+  /** Built from ASCII lookalikes (rn for m), which carry their own measurements. */
+  ascii?: boolean;
+  /** The text font where the variant is closest, when its generator knows it. */
+  bestFont?: string;
 };
 
 /**

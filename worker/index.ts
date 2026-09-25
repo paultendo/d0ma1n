@@ -4,7 +4,7 @@ import OG_IMAGE from "./og.jpg";
 import { scan } from "../src/scan.js";
 import { buildPrototypeBuckets } from "../src/reverse-map.js";
 import { reverseScan, fromPunycode } from "../src/reverse-scan.js";
-import { createDohResolver, rdapLookup, registrarHolder } from "./resolve-doh.js";
+import { brandEvidence, createDohResolver, rdapLookup } from "./resolve-doh.js";
 import { renderLandingPage, renderScanPage, renderTermsPage, type LandingData } from "./page.js";
 import type { ScanResult } from "../src/types.js";
 import { getBlock, toCodepoint } from "../src/reverse-map.js";
@@ -213,15 +213,17 @@ async function runScan(
     createDohResolver().resolve(ownAscii).catch(() => null),
   ]);
   if (own?.registered) result.originalRegistration = { since: own.since, registrar: own.registrar };
-  const ownNs = new Set((ownDns?.ns ?? []).map((n) => n.toLowerCase().replace(/\.$/, "")));
+  // Whose each registered lookalike probably is, from its registrar and from DNS that only its holder could set
+  const brandFacts = { registrar: own?.registrar, ns: ownDns?.ns, spf: ownDns?.spf, dmarc: ownDns?.dmarc };
   for (const v of result.variants) {
-    if (!v.dns?.registered || !v.dns.rdap?.registrar) continue;
-    const shares = (v.dns.ns ?? []).some((n) => ownNs.has(n.toLowerCase().replace(/\.$/, "")));
-    v.dns.holder = registrarHolder(own?.registrar, v.dns.rdap.registrar, shares);
+    if (!v.dns?.registered) continue;
+    const e = brandEvidence(ownAscii, brandFacts, { registrar: v.dns.rdap?.registrar, ns: v.dns.ns, spf: v.dns.spf, dmarc: v.dns.dmarc });
+    v.dns.holder = e.holder;
+    if (e.reason) v.dns.holderReason = e.reason;
   }
   // Lookalikes held elsewhere lead the list
   const rank = (v: (typeof result.variants)[number]) =>
-    !v.dns?.registered ? 2 : v.dns.holder === "brand-registrar" || v.dns.holder === "brand-protection-registrar" ? 1 : 0;
+    !v.dns?.registered ? 2 : v.dns.holder && v.dns.holder !== "other-registrar" ? 1 : 0;
   result.variants.sort((a, b) => rank(a) - rank(b));
   return result;
 }
@@ -251,7 +253,7 @@ async function cachedScan(
 ): Promise<ScanResult | "rate-limited"> {
   const resolve = options.resolve ?? true;
   const font = options.font ?? "";
-  const cacheKey = `v17:${domain}:${resolve}:${font}`;
+  const cacheKey = `v20:${domain}:${resolve}:${font}`;
 
   // Try KV cache first (free read)
   const cached = await kv.get(cacheKey, "json") as ScanResult | null;

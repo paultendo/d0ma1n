@@ -1,4 +1,5 @@
 import { generateMixedScriptProbes, generateVariants } from "./generate.js";
+import { generateAsciiVariants } from "./ascii.js";
 import { evaluateVariantPolicy, scoreVariants } from "./score.js";
 import { buildPrototypeBuckets } from "./reverse-map.js";
 import { splitDomain, getTargetTlds, tldScript } from "./tld.js";
@@ -86,6 +87,9 @@ export async function scan(
     buckets
   );
 
+  // ASCII lookalikes (paypa1, rnicrosoft): ordinary letters, registrable everywhere and shown as written everywhere
+  if (options?.ascii !== false) rawVariants.push(...generateAsciiVariants(label));
+
   const totalGenerated = rawVariants.length;
 
   // Determine TLDs to check
@@ -155,7 +159,7 @@ export async function scan(
 
     await Promise.all(
       [...allVariants, ...probes].map(async (v) => {
-        v.dns = await resolver.resolve(v.domain);
+        v.dns = await resolver.resolve(v.domain, { registrable: v.policy?.registrable });
       })
     );
     allVariants.push(...probes.filter((v) => v.dns?.registered));

@@ -223,6 +223,9 @@ export function scoreVariants(
           bestFontScore = product;
         }
       }
+    } else if (raw.bestFont) {
+      bestFont = raw.bestFont;
+      bestFontScore = dangerScore;
     } else {
       // Auto-detect best font
       const best = findBestFont(raw.substitutions);

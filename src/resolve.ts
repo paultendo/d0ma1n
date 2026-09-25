@@ -73,7 +73,8 @@ export function createNodeResolver(options?: ResolveOptions): DnsResolver {
         ]);
 
         const registered = a.length > 0 || aaaa.length > 0 || ns.length > 0;
-        const hasMx = mx.length > 0;
+        // A null MX (RFC 7505: one record, empty exchange) declares that the domain takes no mail
+        const hasMx = mx.some((m) => m.exchange !== "" && m.exchange !== ".");
 
         let threatLevel: DnsResult["threatLevel"] = "unregistered";
         if (hasMx) {

@@ -6,10 +6,12 @@ import { connect } from "cloudflare:sockets";
  * Queries use the standard DNS wire format (RFC 1035) with the two-byte length prefix TCP needs (RFC 7766).
  */
 
+export const TYPE_A = 1;
 export const TYPE_NS = 2;
 export const TYPE_MX = 15;
+export const TYPE_TXT = 16;
 
-export type BatchAnswer = { rcode: number; ns: string[]; mx: { priority: number; exchange: string }[] };
+export type BatchAnswer = { rcode: number; ns: string[]; mx: { priority: number; exchange: string }[]; a: string[]; txt: string[] };
 
 function encodeQuery(id: number, name: string, type: number): Uint8Array {
   const labels = name.replace(/\.$/, "").split(".");
@@ -57,13 +59,20 @@ function decodeAnswer(msg: Uint8Array): { id: number; answer: BatchAnswer } {
   const qd = v.getUint16(4), an = v.getUint16(6);
   let o = 12;
   for (let i = 0; i < qd; i++) o = readName(msg, o)[1] + 4;
-  const answer: BatchAnswer = { rcode, ns: [], mx: [] };
+  const answer: BatchAnswer = { rcode, ns: [], mx: [], a: [], txt: [] };
   for (let i = 0; i < an && o < msg.length; i++) {
     o = readName(msg, o)[1];
     const type = v.getUint16(o), rdlen = v.getUint16(o + 8);
     const rd = o + 10;
     if (type === TYPE_NS) answer.ns.push(readName(msg, rd)[0]);
     if (type === TYPE_MX) answer.mx.push({ priority: v.getUint16(rd), exchange: readName(msg, rd + 2)[0] });
+    if (type === TYPE_A && rdlen === 4) answer.a.push(`${msg[rd]}.${msg[rd + 1]}.${msg[rd + 2]}.${msg[rd + 3]}`);
+    if (type === TYPE_TXT) {
+      // A TXT record is one or more length-prefixed strings, read as one
+      let t = "", p = rd;
+      while (p < rd + rdlen) { const n = msg[p]!; t += String.fromCharCode(...msg.subarray(p + 1, p + 1 + n)); p += 1 + n; }
+      answer.txt.push(t);
+    }
     o = rd + rdlen;
   }
   return { id, answer };

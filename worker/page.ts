@@ -69,7 +69,6 @@ function homeSpecimen(): string {
   return `
 <section class="specimen" id="specimen">
   <canvas class="hero-rays" aria-hidden="true"></canvas>
-  <div class="hero-pair" aria-hidden="true"></div>
   <h1 class="headline">Which one is the real <em id="brand">google.com</em>?</h1>
   <div class="plates" id="plates">
     <button type="button" class="plate" data-side="0" data-glass="12"><span class="plate-tag">A</span><span class="plate-stamp"></span><span class="plate-domain" id="plate-0"></span></button>
@@ -82,6 +81,7 @@ function homeSpecimen(): string {
       <input type="text" id="domain-input" placeholder="yourcompany.com" autocomplete="off" spellcheck="false" aria-label="Domain to scan">
       <button type="submit" id="scan-btn" data-glass="9">Scan</button>
     </form>
+    <div class="hero-pair" aria-hidden="true"></div>
   </div>
 </section>`;
 }
@@ -761,12 +761,13 @@ const STYLES = `<style>
   .specimen { padding: 5.5rem 0 2rem; position: relative; }
   @media (min-width: 769px) { .specimen .headline { max-width: 11.5ch; margin-bottom: 3.2rem; } }
   .specimen > *:not(.hero-rays) { position: relative; z-index: 1; }
+  /* The pair's label ends the domain row, so the row shares out the width and the two never collide */
   .specimen .hero-pair {
-    position: absolute; right: 0; top: 0; margin-top: -1rem; width: max-content; z-index: 2; font-size: 0.85rem; color: var(--text-dim);
+    justify-self: end; width: max-content; font-size: 0.85rem; color: var(--text-dim);
     opacity: 0; transform: translateY(4px); transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1), transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
   }
   .hero-pair.on { opacity: 1; transform: none; }
-  .hero-pair.cramped { visibility: hidden; }
+
   .hero-pair .seg { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-radius: 9999px; }
   .hero-pair b { color: #1f5af0; font-family: var(--font-specimen); font-weight: 400; font-size: 1.05rem; line-height: 1; }
   /* The glyphs are set larger than the text beside them: centre each part so both sit on the same line */
@@ -890,6 +891,8 @@ const STYLES = `<style>
   }
   .next:hover { border-color: var(--accent); background: var(--accent-soft); }
   .try { margin-top: 2.8rem; display: grid; grid-template-columns: auto 1fr; gap: 1.5rem; align-items: center; }
+  /* On desktop the row also holds the pair's label at its right end */
+  @media (min-width: 1025px) { .try { grid-template-columns: auto minmax(0, 30rem) 1fr; } }
   .try-label { font-size: 1.1rem; font-weight: 500; color: var(--text); }
   .home .scan-form { margin: 0; max-width: 560px; }
   .home .scan-form input { border-radius: 9999px 0 0 9999px; padding-left: 1.4rem; }
@@ -1554,9 +1557,8 @@ const HOME_SCRIPT = `<script>
       if (!info) { label.classList.remove('on'); return; }
       label.innerHTML = '<span class="seg" data-glass="6" data-glass-id="lg-pair"><span><b>' + escHtml(info.real) + '</b> and <b class="fk">' + escHtml(info.fake) + '</b> <span class="mono">' + escHtml(info.codepoint) + '</span></span>' +
         '<span>' + (info.fallback ? 'alike when a fallback font draws it, in ' + info.alike + '% of pairings'
-          : info.alike >= 95 ? 'alike in every text font that has both' : 'alike in ' + info.alike + '% of text fonts that have both') + '</span></span>';
+          : info.alike >= 95 ? 'alike in every font that has both' : 'alike in ' + info.alike + '% of fonts that have both') + '</span></span>';
       label.classList.add('on');
-      if (typeof placeLabel === 'function') placeLabel();
       if (window.glassify) window.glassify(label);
     }
     var pair = PAIRS[0], cur = null, tween = null, TWEEN = 1.6; // seconds for one glyph to become the next
@@ -1589,23 +1591,9 @@ const HOME_SCRIPT = `<script>
       var band = Math.max(80, (cards - r.top) / S);
       geo = { narrow: narrow, size: Math.round(band * (narrow ? 0.75 : 1.05)), base: band - (narrow ? 2 : 6),
         right: narrow ? MW * 0.98 : Math.min(MW * 0.93, (W / 2 + 616) / S) };
-      placeLabel();
     }
 
     // The pair's label sits beside the domain field, right-aligned under the glyphs
-    function placeLabel() {
-      var lab = document.querySelector('.hero-pair'), sec = document.getElementById('specimen'), row = document.querySelector('.try');
-      if (!lab || !sec || !row || !geo) return;
-      var r = cv.getBoundingClientRect(), sr = sec.getBoundingClientRect(), rr = row.getBoundingClientRect();
-      lab.style.right = Math.max(0, sr.right - (r.left + geo.right * S)) + 'px';
-      lab.style.top = (rr.top + rr.height / 2 - sr.top) + 'px';
-      // Where the domain field reaches under it, there is no room: step aside rather than overlap
-      var form = row.querySelector('.scan-form');
-      lab.classList.toggle('cramped', !!form && form.getBoundingClientRect().right + 16 > lab.getBoundingClientRect().left);
-    }
-    // The verdict opening moves the domain field down; the label follows it
-    if (window.ResizeObserver) new ResizeObserver(function () { placeLabel(); }).observe(document.getElementById('specimen'));
-
     // Distance to the nearest pixel that is set in 'on': a two-pass chamfer transform
     function distanceTo(on) {
       var d = new Float32Array(MW * MH), INF = 1e9, D = 1.4142;

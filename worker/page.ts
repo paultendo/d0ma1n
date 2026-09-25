@@ -647,13 +647,15 @@ const STYLES = `<style>
   /* Rays sweep across o and ᴏ, which are never drawn: they show only where the rays cross ink, as in the measurement */
   .hero-rays {
     position: absolute; z-index: 0; pointer-events: none; top: -6rem; height: calc(100% + 6rem);
-    left: 50%; width: 100vw; transform: translateX(-50%);
+    left: 50%; width: 100vw; --tilt-x: 5deg; --tilt-y: -9deg;
+    transform: translateX(-50%) perspective(1600px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+    transform-origin: 75% 45%; transition: transform 1.4s cubic-bezier(0.22, 1, 0.36, 1);
     -webkit-mask-image: linear-gradient(90deg, transparent 25%, #000 55%), linear-gradient(180deg, #000 75%, transparent);
     -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent 25%, #000 55%), linear-gradient(180deg, #000 75%, transparent);
     mask-composite: intersect;
   }
   @media (max-width: 768px) {
-    .hero-rays { opacity: 0.45; -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent 80%); mask-image: linear-gradient(180deg, #000 45%, transparent 80%); }
+    .hero-rays { transform: translateX(-50%); opacity: 0.45; -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent 80%); mask-image: linear-gradient(180deg, #000 45%, transparent 80%); }
   }
   .headline {
     font-family: var(--font-body); font-weight: 400; font-size: clamp(2.4rem, 5.6vw, 4.6rem);
@@ -838,6 +840,7 @@ const STYLES = `<style>
   .closing button:hover { background: var(--accent-soft); }
 
   @media (prefers-reduced-motion: reduce) {
+    .hero-rays { transition: none; }
     .plate, .reveal-up, .reveal-up .tile, .evidence, .loupe, .plate-stamp, .stamp { animation: none !important; transition: none !important; opacity: 1; transform: none; }
   }
 
@@ -1280,14 +1283,27 @@ const HOME_SCRIPT = `<script>
     }
 
     var INK = ['rgba(31, 90, 240, ', 'rgba(217, 45, 32, '];
+    var DEPTH = ['rgba(11, 27, 90, ', 'rgba(110, 20, 14, '];
+    function easeInOutCubic(x) { return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; }
+
+    // A slice of ink along one ray, with a soft extrusion behind it so the glyph reads as a solid slab
+    function slice(g, x0, y0, x1, y1, fade) {
+      for (var k = 8; k >= 1; k--) {
+        ctx.strokeStyle = DEPTH[g] + (0.07 * fade * (9 - k) / 8) + ')'; ctx.lineWidth = 2.4;
+        ctx.beginPath(); ctx.moveTo(x0 + k * 1.2, y0 + k * 1.7); ctx.lineTo(x1 + k * 1.2, y1 + k * 1.7); ctx.stroke();
+      }
+      ctx.strokeStyle = INK[g] + (0.42 * fade) + ')'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    }
 
     function draw(now) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);
       var secs = (now - start) / 1000;
-      // Ease in over the first few seconds, then turn slowly and steadily
-      var eased = secs < 3 ? secs * secs / 6 : secs - 1.5;
-      var angle = 0.62 + eased * 0.045;
+      // Sweep between two angles and back on a cubic ease-in-out, resting briefly at each end
+      var cycle = 11, sweep = 4.6, p = secs % cycle;
+      var phase = p < sweep ? p / sweep : p < cycle / 2 ? 1 : p < cycle / 2 + sweep ? 1 - (p - cycle / 2) / sweep : 0;
+      var angle = 0.5 + 0.55 * easeInOutCubic(phase);
       var fade = Math.min(1, secs / 1.2);
       var dx = Math.cos(angle), dy = Math.sin(angle), nx = -dy, ny = dx;
       var diag = Math.hypot(W, H), cx = W / 2, cy = H / 2, spacing = W < 768 ? 15 : 12;
@@ -1308,8 +1324,7 @@ const HOME_SCRIPT = `<script>
               var x = ox + dx * tc, y = oy + dy * tc;
               if (v >= 0.5) tIn = tc;
               else if (tIn !== null) {
-                ctx.strokeStyle = INK[g] + (0.42 * fade) + ')'; ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.moveTo(ox + dx * tIn, oy + dy * tIn); ctx.lineTo(x, y); ctx.stroke();
+                slice(g, ox + dx * tIn, oy + dy * tIn, x, y, fade);
                 tIn = null;
               }
               ctx.fillStyle = INK[g] + (0.9 * fade) + ')';
@@ -1329,6 +1344,14 @@ const HOME_SCRIPT = `<script>
 
     layout();
     draw(reduced ? start + 60000 : start + 1);
+    // A few degrees of tilt that follows the pointer, eased by the CSS transition
+    if (!reduced && window.matchMedia('(pointer: fine)').matches) {
+      window.addEventListener('pointermove', function (e) {
+        var x = e.clientX / window.innerWidth - 0.5, y = e.clientY / window.innerHeight - 0.5;
+        cv.style.setProperty('--tilt-y', (-9 + x * 6).toFixed(2) + 'deg');
+        cv.style.setProperty('--tilt-x', (5 - y * 4).toFixed(2) + 'deg');
+      }, { passive: true });
+    }
     var resizeTimer;
     window.addEventListener('resize', function () {
       clearTimeout(resizeTimer);

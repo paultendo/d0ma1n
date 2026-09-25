@@ -847,7 +847,8 @@ const STYLES = `<style>
     mask-composite: add, intersect;
   }
   @media (max-width: 768px) {
-    .hero-rays { transform: translateX(-50%); opacity: 0.45; -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent 80%); mask-image: linear-gradient(180deg, #000 45%, transparent 80%); }
+    .hero-rays { transform: translateX(-50%); opacity: 0.85; -webkit-mask-image: linear-gradient(180deg, #000 30%, transparent 46%); mask-image: linear-gradient(180deg, #000 30%, transparent 46%); }
+    .specimen { padding-top: 8.5rem; }
   }
   .headline {
     font-family: var(--font-body); font-weight: 400; font-size: clamp(2.4rem, 5.6vw, 4.6rem);
@@ -1659,8 +1660,12 @@ const HOME_SCRIPT = `<script>
       cv.style.setProperty('--under-w', (under.x1 - under.x0).toFixed(0) + 'px');
       cv.style.setProperty('--under-h', (under.y1 - under.y0).toFixed(0) + 'px');
       var band = Math.max(80, (cards - r.top) / S);
-      geo = { narrow: narrow, size: Math.round(band * (narrow ? 0.75 : 1.05)), base: band - (narrow ? 2 : 6),
-        right: narrow ? MW * 0.98 : Math.min(MW * 0.93, (W / 2 + 616) / S) };
+      geo = { narrow: narrow, size: Math.round(band * 1.05), base: band - 6, right: Math.min(MW * 0.93, (W / 2 + 616) / S) };
+      if (narrow) {
+        // On a phone the headline fills the width, so the pair sits in the space above it rather than behind it
+        var above = Math.max(60, (document.querySelector('.headline').getBoundingClientRect().top - r.top) / S);
+        geo.size = Math.round(Math.min(above * 0.95, MW * 0.42)); geo.base = above - 12; geo.right = MW * 0.92;
+      }
     }
 
     // The pair's label sits beside the domain field, right-aligned under the glyphs

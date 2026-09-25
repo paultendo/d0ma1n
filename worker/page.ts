@@ -8,6 +8,7 @@ export type LandingData = {
     registration: { registered: boolean; since?: string; registrar?: string } | null;
   }>;
   fontStrip: Array<{ font: string; danger: number | null }>;
+  heroPairs: Array<{ real: string; fake: string; codepoint: string; alike: number }>;
   strip: { real: string; fake: string };
   registries: Array<{ tld: string; accepts: boolean | null; rule: string; assumed: boolean }>;
   stats: { tlds: number; fonts: number };
@@ -66,6 +67,7 @@ function homeSpecimen(): string {
   return `
 <section class="specimen" id="specimen">
   <canvas class="hero-rays" aria-hidden="true"></canvas>
+  <div class="hero-pair" aria-hidden="true"></div>
   <h1 class="headline">Which one is the real <em id="brand">google.com</em>?</h1>
   <div class="plates" id="plates">
     <button type="button" class="plate" data-side="0"><span class="plate-tag">A</span><span class="plate-stamp"></span><span class="plate-domain" id="plate-0"></span></button>
@@ -644,6 +646,23 @@ const STYLES = `<style>
   .specimen { padding: 5.5rem 0 2rem; position: relative; }
   @media (min-width: 769px) { .specimen .headline { max-width: 11.5ch; margin-bottom: 3.2rem; } }
   .specimen > *:not(.hero-rays) { position: relative; z-index: 1; }
+  .specimen .hero-pair {
+    position: absolute; right: 0; top: 0; margin-top: -1rem; width: max-content; z-index: 2; font-size: 0.85rem; color: var(--text-dim);
+    opacity: 0; transform: translateY(4px); transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1), transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .hero-pair.on { opacity: 1; transform: none; }
+  .hero-pair .seg { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-radius: 9999px; }
+  .hero-pair b { color: #1f5af0; font-family: var(--font-specimen); font-weight: 400; font-size: 1.05rem; }
+  .hero-pair b.fk { color: #d92d20; }
+  @media (max-width: 1024px) { .hero-pair { display: none; } }
+  .specimen::before {
+    content: ""; position: absolute; z-index: 0; pointer-events: none; top: -6rem; bottom: 0; left: 50%; width: 100vw;
+    transform: translateX(-50%);
+    background:
+      radial-gradient(38rem 26rem at 70% 28%, rgba(31, 90, 240, 0.07), transparent 70%),
+      radial-gradient(30rem 22rem at 88% 40%, rgba(255, 122, 69, 0.06), transparent 70%),
+      radial-gradient(34rem 24rem at 80% 12%, rgba(122, 76, 255, 0.05), transparent 70%);
+  }
   /* Rays sweep across o and ᴏ, which are never drawn: they show only where the rays cross ink, as in the measurement */
   .hero-rays {
     position: absolute; z-index: 0; pointer-events: none; top: -6rem; height: calc(100% + 6rem);
@@ -1230,9 +1249,18 @@ const HOME_SCRIPT = `<script>
     var ctx = cv.getContext('2d');
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
     var W = 0, H = 0, MW = 0, MH = 0, S = 2; // glyph coverage is sampled at half resolution, then interpolated
-    // Real confusable pairs, each drawn identically in Arial: small capitals, and Cyrillic letters against Latin
-    var PAIRS = [['o', '\u1D0F'], ['a', '\u0430'], ['e', '\u0435'], ['p', '\u0440'], ['c', '\u0441'],
-      ['v', '\u1D20'], ['j', '\u0458'], ['s', '\u0455']];
+    // Real confusable pairs from the release data: near-identical ones alternating with near misses
+    var INFO = (data.heroPairs && data.heroPairs.length ? data.heroPairs : [{ real: 'o', fake: '\u1D0F', codepoint: 'U+1D0F', alike: 100 }]);
+    var PAIRS = INFO.map(function (p) { return [p.real, p.fake]; });
+    var label = document.querySelector('.hero-pair');
+    function showLabel(p) {
+      var info = INFO.find(function (x) { return x.real === p[0] && x.fake === p[1]; });
+      if (!label) return;
+      if (!info) { label.classList.remove('on'); return; }
+      label.innerHTML = '<span class="seg"><span><b>' + escHtml(info.real) + '</b> and <b class="fk">' + escHtml(info.fake) + '</b> <span class="mono">' + escHtml(info.codepoint) + '</span></span>' +
+        '<span>' + (info.alike >= 95 ? 'alike in almost every text font' : 'alike in ' + info.alike + '% of text fonts') + '</span></span>';
+      label.classList.add('on');
+    }
     var pair = PAIRS[0], cur = null, tween = null, TWEEN = 1.6; // seconds for one glyph to become the next
     var start = performance.now(), visible = true, raf = 0, geo = null;
 
@@ -1247,6 +1275,13 @@ const HOME_SCRIPT = `<script>
       var band = Math.max(80, (cards - r.top) / S);
       geo = { narrow: narrow, size: Math.round(band * (narrow ? 0.75 : 1.05)), base: band - (narrow ? 2 : 6),
         right: narrow ? MW * 0.98 : Math.min(MW * 0.93, (W / 2 + 616) / S) };
+      // The pair's label sits beside the domain field, right-aligned under the glyphs
+      var lab = document.querySelector('.hero-pair'), sec = document.getElementById('specimen'), row = document.querySelector('.try');
+      if (lab && sec && row) {
+        var sr = sec.getBoundingClientRect(), rr = row.getBoundingClientRect();
+        lab.style.right = Math.max(0, sr.right - (r.left + geo.right * S)) + 'px';
+        lab.style.top = (rr.top + rr.height / 2 - sr.top) + 'px';
+      }
     }
 
     // Distance to the nearest pixel that is set in 'on': a two-pass chamfer transform
@@ -1318,35 +1353,48 @@ const HOME_SCRIPT = `<script>
 
     var INK = ['rgba(31, 90, 240, ', 'rgba(217, 45, 32, '];
     var DEPTH = ['rgba(11, 27, 90, ', 'rgba(110, 20, 14, '];
+    var SHIFT = ['rgba(122, 76, 255, ', 'rgba(255, 122, 69, '];
     function easeInOutCubic(x) { return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; }
 
     // A slice of ink along one ray, with a soft extrusion behind it so the glyph reads as a solid slab
     function slice(g, x0, y0, x1, y1, fade) {
       for (var k = 16; k >= 1; k--) {
-        ctx.strokeStyle = DEPTH[g] + (0.028 * fade * (17 - k) / 16) + ')'; ctx.lineWidth = 3;
+        ctx.strokeStyle = DEPTH[g] + (0.02 * fade * (17 - k) / 16) + ')'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.moveTo(x0 + k * 1.3, y0 + k * 1.8); ctx.lineTo(x1 + k * 1.3, y1 + k * 1.8); ctx.stroke();
       }
       // A light halo, then a soft glow in the ink's colour, separate the line from its shadow
       ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
-      ctx.strokeStyle = 'rgba(255, 255, 255, ' + (0.85 * fade) + ')'; ctx.lineWidth = 7; ctx.stroke();
-      ctx.strokeStyle = INK[g] + (0.1 * fade) + ')'; ctx.lineWidth = 5; ctx.stroke();
-      ctx.strokeStyle = INK[g] + (0.5 * fade) + ')'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255, 255, 255, ' + (0.7 * fade) + ')'; ctx.lineWidth = 7; ctx.stroke();
+      ctx.strokeStyle = INK[g] + (0.07 * fade) + ')'; ctx.lineWidth = 5; ctx.stroke();
+      // The line itself shifts from the ink colour into a neighbouring hue along its length
+      var grad = ctx.createLinearGradient(x0, y0, x1, y1);
+      grad.addColorStop(0, INK[g] + (0.46 * fade) + ')');
+      grad.addColorStop(1, SHIFT[g] + (0.4 * fade) + ')');
+      ctx.strokeStyle = grad; ctx.lineWidth = 2; ctx.stroke();
+    }
+
+    function dot(g, x, y, a) {
+      ctx.fillStyle = INK[g] + (0.09 * a) + ')';
+      ctx.beginPath(); ctx.arc(x, y, 5, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = INK[g] + (0.68 * a) + ')';
+      ctx.beginPath(); ctx.arc(x, y, 2, 0, 6.2832); ctx.fill();
     }
 
     function draw(now) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);
       var secs = (now - start) / 1000;
-      // Sweep between two angles and back on a cubic ease-in-out, resting briefly at each end
-      var cycle = 11, sweep = 4.6, p = secs % cycle;
-      var phase = p < sweep ? p / sweep : p < cycle / 2 ? 1 : p < cycle / 2 + sweep ? 1 - (p - cycle / 2) / sweep : 0;
-      var angle = 0.5 + 0.55 * easeInOutCubic(phase);
+      // Always forward: turn a fifth of a half-turn on a cubic ease-in-out, settle, turn again. Rays repeat every
+      // half-turn, so they can keep going round without ever reversing.
+      var STEP = Math.PI / 5, MOVE = 3.4, REST = 1.1, per = MOVE + REST;
+      var n = Math.floor(secs / per), p = secs - n * per;
+      var angle = 0.55 + n * STEP + STEP * easeInOutCubic(Math.min(1, p / MOVE));
       var fade = Math.min(1, secs / 1.2);
       // Mid-tween, each glyph's field is a blend of the old pair's and the new one's
       var mix = 0, from = cur, to = null;
       if (tween) {
         var q = (now - tween.at) / 1000 / TWEEN;
-        if (q >= 1) { cur = tween.to; pair = tween.pair; tween = null; from = cur; }
+        if (q >= 1) { cur = tween.to; pair = tween.pair; tween = null; from = cur; showLabel(pair); }
         else { mix = easeInOutCubic(Math.max(0, q)); to = tween.to; }
       }
       var b = to ? { x0: Math.min(from.box.x0, to.box.x0), x1: Math.max(from.box.x1, to.box.x1),
@@ -1356,7 +1404,15 @@ const HOME_SCRIPT = `<script>
       ctx.lineCap = 'round';
       for (var off = -diag / 2; off <= diag / 2; off += spacing) {
         var ox = cx + nx * off, oy = cy + ny * off;
-        ctx.strokeStyle = 'rgba(31, 90, 240, ' + (0.06 * fade) + ')'; ctx.lineWidth = 1;
+        // Each ray is brightest where it passes the glyphs and falls away towards the edges
+        var gx = (b.x0 + b.x1) / 2, gy = (b.y0 + b.y1) / 2;
+        var tMid = (gx - ox) * dx + (gy - oy) * dy, miss = Math.abs((gx - ox) * nx + (gy - oy) * ny);
+        var near = Math.max(0, 1 - miss / (diag * 0.45));
+        var rg = ctx.createLinearGradient(ox + dx * (tMid - diag * 0.6), oy + dy * (tMid - diag * 0.6), ox + dx * (tMid + diag * 0.6), oy + dy * (tMid + diag * 0.6));
+        rg.addColorStop(0, 'rgba(31, 90, 240, 0)');
+        rg.addColorStop(0.5, 'rgba(31, 90, 240, ' + ((0.022 + 0.065 * near * near) * fade).toFixed(3) + ')');
+        rg.addColorStop(1, 'rgba(122, 76, 255, 0)');
+        ctx.strokeStyle = rg; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(ox - dx * diag, oy - dy * diag); ctx.lineTo(ox + dx * diag, oy + dy * diag); ctx.stroke();
         var span = clip(b, ox, oy, dx, dy);
         if (!span) continue;
@@ -1372,11 +1428,18 @@ const HOME_SCRIPT = `<script>
             if ((prev < 0) !== (v < 0)) {
               // The outline is where the signed distance passes zero, between the two samples
               var tc = t - step + step * prev / (prev - v);
-              var x = ox + dx * tc, y = oy + dy * tc;
               if (v < 0) tIn = tc;
-              else if (tIn !== null) { slice(g, ox + dx * tIn, oy + dy * tIn, x, y, fade); tIn = null; }
-              ctx.fillStyle = INK[g] + (0.9 * fade) + ')';
-              ctx.beginPath(); ctx.arc(x, y, 2.2, 0, 6.2832); ctx.fill();
+              else if (tIn !== null) {
+                // A ray that only grazes a curve makes a sliver that flickers as the angle turns: fade slices in by length
+                var len = tc - tIn, w = Math.min(1, Math.max(0, (len - 1.5) / 12));
+                w = w * w * (3 - 2 * w);
+                if (w > 0.01) {
+                  var x0 = ox + dx * tIn, y0 = oy + dy * tIn, x1 = ox + dx * tc, y1 = oy + dy * tc;
+                  slice(g, x0, y0, x1, y1, fade * w);
+                  dot(g, x0, y0, fade * w); dot(g, x1, y1, fade * w);
+                }
+                tIn = null;
+              }
             }
             prev = v;
           }
@@ -1396,6 +1459,7 @@ const HOME_SCRIPT = `<script>
       if (reduced) { pair = next; cur = fieldsFor(pair); draw(start + 60000); return; }
       if (tween) { cur = tween.to; pair = tween.pair; }
       tween = { pair: next, to: fieldsFor(next), at: performance.now() };
+      if (label) label.classList.remove('on');
     }
     // The game shows its own swap; otherwise the pairs change every other sweep
     window.heroPair = function (a, b) { swapTo([a, b]); };
@@ -1407,6 +1471,7 @@ const HOME_SCRIPT = `<script>
 
     layout();
     draw(reduced ? start + 60000 : start + 1);
+    showLabel(pair);
     // A few degrees of tilt that follows the pointer, eased by the CSS transition
     if (!reduced && window.matchMedia('(pointer: fine)').matches) {
       window.addEventListener('pointermove', function (e) {

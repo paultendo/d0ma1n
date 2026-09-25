@@ -10,6 +10,7 @@ import { outsideRepertoire, registryRule } from "../src/policy/repertoire.js";
 import { evaluateDomainLabel, getDomainPolicyProfileForTld } from "../src/policy/index.js";
 import { TLD_RULES } from "../src/policy/repertoire-data.js";
 import { FONT_SPECIFIC_WEIGHTS } from "namespace-guard/font-specific-weights";
+import { CONFUSABLE_WEIGHTS } from "namespace-guard/confusable-weights";
 
 interface Env {
   SCAN_CACHE: KVNamespace;
@@ -32,6 +33,12 @@ const CHAR_NAMES: Record<string, string> = {
   "\u1D0F": "LATIN LETTER SMALL CAPITAL O",
   "\u1D20": "LATIN LETTER SMALL CAPITAL V",
 };
+/** Pairs for the hero background: near-identical ones alternating with near misses, scored from the release data. */
+const HERO_PAIRS: [string, string][] = [
+  ["o", "\u1D0F"], ["g", "\u0261"], ["s", "\u0455"], ["y", "\u1EF5"], ["a", "\u0430"], ["v", "\u03BD"],
+  ["j", "\u0458"], ["u", "\u1D1C"], ["w", "\u051D"], ["a", "\u0251"], ["e", "\u0435"], ["e", "\u0275"],
+  ["i", "\u0456"], ["n", "\u043F"],
+];
 const STRIP_FONTS = ["Arial", "Times New Roman", "Courier New", "Tahoma", "Georgia", "Verdana", "Trebuchet MS", "Helvetica"];
 const BOARD_TLDS = ["com", "net", "org", "name", "de", "fr", "co.uk", "io", "jp", "рф", "eu", "xyz"];
 
@@ -69,8 +76,13 @@ async function landingData(): Promise<LandingData> {
       rule: rule.kind, assumed: rule.kind === "ascii" && rule.assumed === true,
     };
   });
+  const weights = CONFUSABLE_WEIGHTS as Record<string, Record<string, { danger: number }>>;
+  const heroPairs = HERO_PAIRS.flatMap(([real, fake]) => {
+    const w = weights[fake]?.[real] ?? weights[real]?.[fake];
+    return w ? [{ real, fake, codepoint: toCodepoint(fake), alike: Math.round(w.danger * 100) }] : [];
+  });
   landing = {
-    examples, fontStrip, strip: { real: "google", fake: label }, registries,
+    examples, fontStrip, heroPairs, strip: { real: "google", fake: label }, registries,
     stats: { tlds: Object.keys(TLD_RULES).length, fonts: Object.keys(fonts).length },
   };
   return landing;

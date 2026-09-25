@@ -1325,9 +1325,7 @@ const HOME_SCRIPT = `<script>
         }
         return f;
       });
-      var cy = (geo.base - geo.size * 0.36) * S;
-      return { f: fields, box: { x0: (xA - 6) * S, x1: (geo.right + 6) * S, y0: (geo.base - geo.size) * S, y1: (geo.base + geo.size * 0.12) * S,
-        a: [(xA + wA / 2) * S, cy], b: [(xB + wB / 2) * S, cy] } };
+      return { f: fields, box: { x0: (xA - 6) * S, x1: (geo.right + 6) * S, y0: (geo.base - geo.size) * S, y1: (geo.base + geo.size * 0.12) * S } };
     }
 
     function layout() { measure(); cur = fieldsFor(pair); if (tween) tween.to = fieldsFor(tween.pair); }
@@ -1403,14 +1401,11 @@ const HOME_SCRIPT = `<script>
         y0: Math.min(from.box.y0, to.box.y0), y1: Math.max(from.box.y1, to.box.y1) } : from.box;
       var dx = Math.cos(angle), dy = Math.sin(angle), nx = -dy, ny = dx;
       var diag = Math.hypot(W, H), cx = W / 2, cy = H / 2, spacing = W < 768 ? 15 : 12, step = 1.5;
-      var L = lensStep(now, secs, from.box, to ? to.box : null, mix);
-      shadowUnder(L, fade);
-      var gx = (b.x0 + b.x1) / 2, gy = (b.y0 + b.y1) / 2;
       ctx.lineCap = 'round';
       for (var off = -diag / 2; off <= diag / 2; off += spacing) {
         var ox = cx + nx * off, oy = cy + ny * off;
-        var segs = bend(ox - dx * diag, oy - dy * diag, dx, dy, diag * 2, L);
         // Each ray is brightest where it passes the glyphs and falls away towards the edges
+        var gx = (b.x0 + b.x1) / 2, gy = (b.y0 + b.y1) / 2;
         var tMid = (gx - ox) * dx + (gy - oy) * dy, miss = Math.abs((gx - ox) * nx + (gy - oy) * ny);
         var near = Math.max(0, 1 - miss / (diag * 0.45));
         var rg = ctx.createLinearGradient(ox + dx * (tMid - diag * 0.6), oy + dy * (tMid - diag * 0.6), ox + dx * (tMid + diag * 0.6), oy + dy * (tMid + diag * 0.6));
@@ -1418,136 +1413,38 @@ const HOME_SCRIPT = `<script>
         rg.addColorStop(0.5, 'rgba(31, 90, 240, ' + ((0.022 + 0.065 * near * near) * fade).toFixed(3) + ')');
         rg.addColorStop(1, 'rgba(122, 76, 255, 0)');
         ctx.strokeStyle = rg; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(segs[0][0], segs[0][1]);
-        for (var si = 0; si < segs.length; si++) ctx.lineTo(segs[si][0] + segs[si][2] * segs[si][4], segs[si][1] + segs[si][3] * segs[si][4]);
-        ctx.stroke();
-        for (var sj = 0; sj < segs.length; sj++) {
-          var sg = segs[sj], span = clip(b, sg[0], sg[1], sg[2], sg[3]);
-          if (!span) continue;
-          span[0] = Math.max(span[0], 0); span[1] = Math.min(span[1], sg[4]);
-          if (span[0] < span[1]) crossings(sg, span, from, to, mix, fade, step);
-        }
-      }
-      glass(L, fade);
-    }
-
-    // Where one straight piece of a ray crosses each glyph's outline, drawn as slices of ink with a dot at each edge
-    function crossings(sg, span, from, to, mix, fade, step) {
-      var sx = sg[0], sy = sg[1], ddx = sg[2], ddy = sg[3];
-      for (var g = 0; g < 2; g++) {
-        var fa = from.f[g], fb = to ? to.f[g] : null;
-        var val = function (t) {
-          var x = sx + ddx * t, y = sy + ddy * t, v = field(fa, x, y);
-          return fb ? v + (field(fb, x, y) - v) * mix : v;
-        };
-        // A piece that starts inside the ink (the lens split the ray there) starts its slice at once, without a dot
-        var prev = val(span[0]), tIn = prev < 0 ? span[0] : null, dotIn = false;
-        var emit = function (t0, t1, d0, d1) {
-          // A ray that only grazes a curve makes a sliver that flickers as the angle turns: fade slices in by length
-          var w = Math.min(1, Math.max(0, (t1 - t0 - 1.5) / 12));
-          w = w * w * (3 - 2 * w);
-          if (!(d0 && d1)) w = 1;
-          if (w <= 0.01) return;
-          var x0 = sx + ddx * t0, y0 = sy + ddy * t0, x1 = sx + ddx * t1, y1 = sy + ddy * t1;
-          slice(g, x0, y0, x1, y1, fade * w);
-          if (d0) dot(g, x0, y0, fade * w);
-          if (d1) dot(g, x1, y1, fade * w);
-        };
-        for (var t = span[0] + step; t <= span[1]; t += step) {
-          var v = val(t);
-          if ((prev < 0) !== (v < 0)) {
-            // The outline is where the signed distance passes zero, between the two samples
-            var tc = t - step + step * prev / (prev - v);
-            if (v < 0) { tIn = tc; dotIn = true; }
-            else if (tIn !== null) { emit(tIn, tc, dotIn, true); tIn = null; }
+        ctx.beginPath(); ctx.moveTo(ox - dx * diag, oy - dy * diag); ctx.lineTo(ox + dx * diag, oy + dy * diag); ctx.stroke();
+        var span = clip(b, ox, oy, dx, dy);
+        if (!span) continue;
+        for (var g = 0; g < 2; g++) {
+          var fa = from.f[g], fb = to ? to.f[g] : null;
+          var val = function (t) {
+            var x = ox + dx * t, y = oy + dy * t, v = field(fa, x, y);
+            return fb ? v + (field(fb, x, y) - v) * mix : v;
+          };
+          var prev = val(span[0]), tIn = null;
+          for (var t = span[0] + step; t <= span[1]; t += step) {
+            var v = val(t);
+            if ((prev < 0) !== (v < 0)) {
+              // The outline is where the signed distance passes zero, between the two samples
+              var tc = t - step + step * prev / (prev - v);
+              if (v < 0) tIn = tc;
+              else if (tIn !== null) {
+                // A ray that only grazes a curve makes a sliver that flickers as the angle turns: fade slices in by length
+                var len = tc - tIn, w = Math.min(1, Math.max(0, (len - 1.5) / 12));
+                w = w * w * (3 - 2 * w);
+                if (w > 0.01) {
+                  var x0 = ox + dx * tIn, y0 = oy + dy * tIn, x1 = ox + dx * tc, y1 = oy + dy * tc;
+                  slice(g, x0, y0, x1, y1, fade * w);
+                  dot(g, x0, y0, fade * w); dot(g, x1, y1, fade * w);
+                }
+                tIn = null;
+              }
+            }
+            prev = v;
           }
-          prev = v;
-        }
-        if (tIn !== null) emit(tIn, span[1], dotIn, false);
-      }
-    }
-
-    // A glass lens: parallel rays bend towards its centre on the way in and again on the way out, so they converge
-    // beyond it. Returns the ray as straight pieces [x, y, dx, dy, length].
-    function bend(sx, sy, dx, dy, len, L) {
-      if (!L) return [[sx, sy, dx, dy, len]];
-      var hit = circle(sx, sy, dx, dy, L);
-      if (!hit || hit[0] <= 0 || hit[0] >= len) return [[sx, sy, dx, dy, len]];
-      var t1 = hit[0], px = sx + dx * t1, py = sy + dy * t1;
-      // Flat in the middle and steep at the rim, as liquid glass is: the bend grows with the cube of the offset
-      var h = ((px - L.x) * -dy + (py - L.y) * dx) / L.r, th = -h * h * h * L.power;
-      var c = Math.cos(th), s = Math.sin(th);
-      var ex = dx * c - dy * s, ey = dy * c + dx * s;
-      var out = circle(px + ex * 0.01, py + ey * 0.01, ex, ey, L);
-      var chord = out ? Math.max(0, out[1]) + 0.01 : 0;
-      var qx = px + ex * chord, qy = py + ey * chord;
-      var fx = ex * c - ey * s, fy = ey * c + ex * s;
-      return [[sx, sy, dx, dy, t1], [px, py, ex, ey, chord], [qx, qy, fx, fy, Math.max(0, len - t1 - chord)]];
-    }
-
-    // The two distances at which a ray meets the lens's rim, or null
-    function circle(sx, sy, dx, dy, L) {
-      var ox = sx - L.x, oy = sy - L.y, bq = ox * dx + oy * dy, cq = ox * ox + oy * oy - L.r * L.r, disc = bq * bq - cq;
-      if (disc <= 0) return null;
-      var r = Math.sqrt(disc);
-      return [-bq - r, -bq + r];
-    }
-
-    // The lens drifts between the two glyphs, or follows the pointer on a spring; near a glyph it is pulled onto it
-    var lens = { x: 0, y: 0, vx: 0, vy: 0, init: false, last: 0 }, ptr = null;
-    function lensStep(now, secs, bf, bt, mix) {
-      var ca = bf.a, cb = bf.b;
-      if (bt) { ca = [ca[0] + (bt.a[0] - ca[0]) * mix, ca[1] + (bt.a[1] - ca[1]) * mix]; cb = [cb[0] + (bt.b[0] - cb[0]) * mix, cb[1] + (bt.b[1] - cb[1]) * mix]; }
-      var r = Math.max(36, geo.size * S * (geo.narrow ? 0.22 : 0.25));
-      var u = 0.5 + 0.5 * Math.sin(secs * 0.32 - 1.2);
-      var tx = ca[0] + (cb[0] - ca[0]) * u, ty = ca[1] + (cb[1] - ca[1]) * u + Math.sin(secs * 0.5) * r * 0.25;
-      if (ptr) { tx = ptr[0]; ty = ptr[1]; }
-      [ca, cb].forEach(function (c) {
-        var d = Math.hypot(tx - c[0], ty - c[1]), reach = r * 1.8;
-        if (d < reach) { var w = 1 - d / reach; w = w * w * (3 - 2 * w); tx += (c[0] - tx) * w; ty += (c[1] - ty) * w; }
-      });
-      if (!lens.init || reduced) { lens.x = tx; lens.y = ty; lens.init = true; }
-      else {
-        var k = Math.min(3, (now - (lens.last || now)) / 16.7);
-        for (var i = 0; i < k; i++) {
-          lens.vx = (lens.vx + (tx - lens.x) * 0.045) * 0.8; lens.vy = (lens.vy + (ty - lens.y) * 0.045) * 0.8;
-          lens.x += lens.vx; lens.y += lens.vy;
         }
       }
-      lens.last = now;
-      // Moving quickly squeezes the glass a little along its path, like a drop of liquid
-      var sp = Math.min(1, Math.hypot(lens.vx, lens.vy) / 30);
-      return { x: lens.x, y: lens.y, r: r, power: 0.42, stretch: sp, ang: Math.atan2(lens.vy, lens.vx) };
-    }
-
-    function shadowUnder(L, fade) {
-      var g = ctx.createRadialGradient(L.x, L.y + L.r * 0.45, L.r * 0.2, L.x, L.y + L.r * 0.45, L.r * 1.5);
-      g.addColorStop(0, 'rgba(50, 50, 93, ' + (0.1 * fade) + ')');
-      g.addColorStop(1, 'rgba(50, 50, 93, 0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(L.x, L.y + L.r * 0.45, L.r * 1.5, 0, 6.2832); ctx.fill();
-    }
-
-    // The glass itself: clear in the middle, brighter towards a bevelled rim, with a highlight and a coloured fringe
-    function glass(L, fade) {
-      ctx.save();
-      ctx.translate(L.x, L.y); ctx.rotate(L.ang); ctx.scale(1 + L.stretch * 0.08, 1 - L.stretch * 0.06); ctx.rotate(-L.ang);
-      var r = L.r;
-      var g = ctx.createRadialGradient(-r * 0.2, -r * 0.25, r * 0.1, 0, 0, r);
-      g.addColorStop(0, 'rgba(255, 255, 255, ' + (0.16 * fade) + ')');
-      g.addColorStop(0.72, 'rgba(255, 255, 255, ' + (0.04 * fade) + ')');
-      g.addColorStop(0.93, 'rgba(255, 255, 255, ' + (0.28 * fade) + ')');
-      g.addColorStop(1, 'rgba(255, 255, 255, ' + (0.6 * fade) + ')');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.fill();
-      ctx.lineWidth = 2; ctx.lineCap = 'round';
-      ctx.strokeStyle = 'rgba(122, 76, 255, ' + (0.22 * fade) + ')'; ctx.beginPath(); ctx.arc(0, 0, r - 2.5, 0.15, 1.35); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255, 122, 69, ' + (0.22 * fade) + ')'; ctx.beginPath(); ctx.arc(0, 0, r - 2.5, 3.3, 4.5); ctx.stroke();
-      ctx.lineWidth = 1.25; ctx.strokeStyle = 'rgba(255, 255, 255, ' + (0.95 * fade) + ')';
-      ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.2832); ctx.stroke();
-      ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(11, 27, 51, ' + (0.08 * fade) + ')';
-      ctx.beginPath(); ctx.arc(0, 0, r + 1, 0, 6.2832); ctx.stroke();
-      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255, 255, 255, ' + (0.85 * fade) + ')';
-      ctx.beginPath(); ctx.arc(0, 0, r * 0.8, 3.55, 4.35); ctx.stroke();
-      ctx.restore();
     }
 
     function tick(now) {
@@ -1577,11 +1474,7 @@ const HOME_SCRIPT = `<script>
     showLabel(pair);
     // A few degrees of tilt that follows the pointer, eased by the CSS transition
     if (!reduced && window.matchMedia('(pointer: fine)').matches) {
-      var hero = document.getElementById('specimen');
-      hero.addEventListener('pointerleave', function () { ptr = null; });
       window.addEventListener('pointermove', function (e) {
-        var cr = cv.getBoundingClientRect(), hr = hero.getBoundingClientRect();
-        ptr = e.clientY < hr.bottom && e.clientY > hr.top ? [(e.clientX - cr.left) * W / cr.width, (e.clientY - cr.top) * H / cr.height] : null;
         var x = e.clientX / window.innerWidth - 0.5, y = e.clientY / window.innerHeight - 0.5;
         cv.style.setProperty('--tilt-y', (-9 + x * 6).toFixed(2) + 'deg');
         cv.style.setProperty('--tilt-x', (5 - y * 4).toFixed(2) + 'deg');

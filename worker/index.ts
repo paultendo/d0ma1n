@@ -1,4 +1,6 @@
 import { domainToASCII, domainToUnicode } from "node:url";
+// @ts-expect-error: a Data module, imported as bytes (see the rules in wrangler.toml)
+import OG_IMAGE from "./og.jpg";
 import { scan } from "../src/scan.js";
 import { buildPrototypeBuckets } from "../src/reverse-map.js";
 import { reverseScan, fromPunycode } from "../src/reverse-scan.js";
@@ -330,6 +332,13 @@ export default {
     // GET / - Landing page
     if (path === "/" || path === "") {
       return htmlResponse(renderLandingPage(await landingData()));
+    }
+
+    // GET /og.jpg - The image link previews show
+    if (path === "/og.jpg") {
+      return new Response(OG_IMAGE as ArrayBuffer, {
+        headers: { "Content-Type": "image/jpeg", "Cache-Control": "public, max-age=86400" },
+      });
     }
 
     // GET /terms - Terms of use

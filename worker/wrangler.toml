@@ -12,6 +12,11 @@ routes = [
 [build]
 command = ""
 
+# The share image ships inside the Worker as bytes
+[[rules]]
+type = "Data"
+globs = ["**/*.jpg"]
+
 [observability]
 [observability.logs]
 enabled = true

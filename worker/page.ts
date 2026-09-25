@@ -28,6 +28,12 @@ export function renderLandingPage(data: LandingData): string {
   <meta property="og:description" content="Find the lookalikes of your domain that someone could register, measured glyph by glyph.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://d0ma1n.app">
+  <meta property="og:image" content="https://d0ma1n.app/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="The d0ma1n logo and the question: which one is the real google.com? Beside it, the letter o and the small capital ᴏ, drawn identically.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://d0ma1n.app/og.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
@@ -206,7 +212,7 @@ function homeReport(): string {
   </div></div>
   <div class="window">
     <div class="window-bar" data-glass="8"><i></i><i></i><i></i><span class="window-url">d0ma1n.app/scan/paypal.com</span></div>
-    <div class="window-body"><div id="preview"><div class="loading"><div class="spinner"></div><p>Loading a live scan&hellip;</p></div></div></div>
+    <div class="window-body"><div id="preview"><div class="loading" role="status"><div class="wordmark-loader" aria-hidden="true"><span class="wl-grow wl-d">d</span><span class="wl-swap wl-0"><i>o</i><b>0</b></span><span class="wl-grow wl-ma">ma</span><span class="wl-swap wl-1"><i>i</i><b>1</b></span><span class="wl-grow wl-n">n</span></div><p>Loading a live scan&hellip;</p></div></div></div>
   </div>
   <div class="window-caption"><span>Live scan of paypal.com</span><a href="/scan/paypal.com">Open the full report</a></div>
 </section>`;
@@ -247,6 +253,11 @@ export function renderScanPage(result: ScanResult): string {
   <meta property="og:description" content="${escHtml(desc)}">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://d0ma1n.app/scan/${escHtml(result.original)}">
+  <meta property="og:image" content="https://d0ma1n.app/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://d0ma1n.app/og.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
@@ -651,15 +662,31 @@ const STYLES = `<style>
     padding: 3rem;
     color: var(--text-dim);
   }
-  .loading .spinner {
-    display: inline-block;
-    width: 24px;
-    height: 24px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin-bottom: 0.5rem;
+  /* Loading: the wordmark assembles itself from a confusable pair. o and i become 0 and 1, then d, ma and n
+     open up around them. One 3.2s cycle, looped while the scan runs. */
+  .wordmark-loader { display: inline-flex; align-items: baseline; margin-bottom: 0.9rem; font-family: var(--font-mono); font-weight: 600;
+    font-size: 2.1rem; line-height: 1; color: var(--text); animation: wl-cycle 3.2s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+  .wl-swap { display: inline-grid; }
+  .wl-swap > * { grid-area: 1 / 1; font-style: normal; font-weight: inherit; text-align: center; }
+  .wl-swap > i { animation: wl-out 3.2s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+  .wl-swap > b { color: var(--accent); animation: wl-in 3.2s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+  .wl-grow { display: inline-block; overflow: hidden; white-space: nowrap; max-width: 0; opacity: 0; }
+  .wl-d { animation: wl-grow-1 3.2s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+  .wl-n { animation: wl-grow-1 3.2s cubic-bezier(0.22, 1, 0.36, 1) infinite; animation-delay: 0.1s; }
+  .wl-ma { animation: wl-grow-2 3.2s cubic-bezier(0.22, 1, 0.36, 1) infinite; animation-delay: 0.05s; }
+  @keyframes wl-cycle { 0% { opacity: 0; } 6%, 88% { opacity: 1; } 100% { opacity: 0; } }
+  @keyframes wl-out { 0%, 16% { opacity: 1; transform: none; filter: none; } 30%, 100% { opacity: 0; transform: scaleY(1.2); filter: blur(3px); } }
+  @keyframes wl-in { 0%, 16% { opacity: 0; transform: scaleY(0.8); filter: blur(3px); } 30%, 100% { opacity: 1; transform: none; filter: none; } }
+  /* The space opens first; the letters only fade in once it is nearly full, so a half-open d never reads as a c */
+  @keyframes wl-grow-1 { 0%, 34% { max-width: 0; opacity: 0; } 46% { opacity: 0; } 50% { max-width: 1ch; } 60%, 100% { max-width: 1ch; opacity: 1; } }
+  @keyframes wl-grow-2 { 0%, 34% { max-width: 0; opacity: 0; } 46% { opacity: 0; } 50% { max-width: 2ch; } 60%, 100% { max-width: 2ch; opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    .wordmark-loader { animation: wl-pulse 1.6s ease-in-out infinite alternate; }
+    .wl-swap > i { display: none; }
+    .wl-swap > b, .wl-grow { animation: none; opacity: 1; transform: none; filter: none; }
+    .wl-d, .wl-n { max-width: 1ch; }
+    .wl-ma { max-width: 2ch; }
+    @keyframes wl-pulse { from { opacity: 1; } to { opacity: 0.45; } }
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -1273,7 +1300,7 @@ async function doScan() {
 
   btn.disabled = true;
   btn.textContent = 'Scanning...';
-  results.innerHTML = '<div class="loading"><div class="spinner"></div><p>Scanning for lookalike threats and checking DNS...</p></div>';
+  results.innerHTML = '<div class="loading" role="status"><div class="wordmark-loader" aria-hidden="true"><span class="wl-grow wl-d">d</span><span class="wl-swap wl-0"><i>o</i><b>0</b></span><span class="wl-grow wl-ma">ma</span><span class="wl-swap wl-1"><i>i</i><b>1</b></span><span class="wl-grow wl-n">n</span></div><p>Scanning for lookalikes and checking who holds them&hellip;</p></div>';
   // On the homepage the results land below the specimen, out of view: take the reader there as the scan starts
   if (document.body.classList.contains('home')) {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -2013,7 +2040,7 @@ const HOME_SCRIPT = `<script>
   function loadPreview() {
     if (previewLoaded) return; previewLoaded = true;
     var el = document.getElementById('preview');
-    fetch('/api/scan?domain=paypal.com&top=8').then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+    fetch('/api/scan?domain=paypal.com&top=50').then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (d) { renderResults(d, el); drift(el); })
       .catch(function () { el.innerHTML = '<p class="footnote">The live scan could not load just now. <a href="/scan/paypal.com" style="color:var(--accent-bright)">Open it directly</a>.</p>'; });
   }

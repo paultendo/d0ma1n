@@ -108,10 +108,10 @@ function homeMethod(): string {
       <figcaption><span class="mono">U+1D0F</span><span>Latin letter small capital o</span></figcaption></figure>
   </div>
   <div class="chips" role="group" aria-label="Font">
-    <button type="button" class="chip" data-glass="7" data-font="Arial" aria-pressed="true">Arial</button>
-    <button type="button" class="chip" data-glass="7" data-font="Times New Roman" aria-pressed="false">Times New Roman</button>
-    <button type="button" class="chip" data-glass="7" data-font="Georgia" aria-pressed="false">Georgia</button>
-    <button type="button" class="chip" data-glass="7" data-font="Verdana" aria-pressed="false">Verdana</button>
+    <button type="button" class="chip" data-font="Arial" aria-pressed="true">Arial</button>
+    <button type="button" class="chip" data-font="Times New Roman" aria-pressed="false">Times New Roman</button>
+    <button type="button" class="chip" data-font="Georgia" aria-pressed="false">Georgia</button>
+    <button type="button" class="chip" data-font="Verdana" aria-pressed="false">Verdana</button>
   </div>
   <p class="footnote">This demonstration uses 25 rays at one angle at a time. The published measurements use 50 rays at each of 36 angles, in every macOS system font and in Roboto, and test shape and size separately.</p>
 </section>`;
@@ -712,13 +712,6 @@ const STYLES = `<style>
   }
   .next:hover { border-color: transparent; background: rgba(233, 240, 255, 0.7);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(31, 90, 240, 0.28), 0 8px 20px -8px rgba(31, 90, 240, 0.35); }
-  .chip {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04)); border-color: transparent;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 6px 14px -8px rgba(0, 0, 0, 0.5);
-  }
-  .chip:hover { background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.07)); }
-  .chip[aria-pressed="true"] { background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(233, 240, 255, 0.9));
-    box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 rgba(11, 27, 51, 0.12), 0 8px 18px -8px rgba(0, 0, 0, 0.55); }
   /* A soft white core keeps the links legible over anything, and leaves the rim clear so the bending shows */
   .topbar-float .bar::before {
     content: ""; position: absolute; inset: 7px 12px; z-index: -1; border-radius: inherit; background: rgba(255, 255, 255, 0.88);
@@ -898,13 +891,20 @@ const STYLES = `<style>
   .raylab-mid .match.same { background: rgba(255, 138, 128, 0.16); color: #ffb3ab; }
   .raylab-mid .match.diff { background: rgba(110, 231, 183, 0.14); color: #86efac; }
   .chips { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1.75rem; }
-  .chip { font-family: var(--font-body); font-size: 0.95rem; background: rgba(255, 255, 255, 0.06); color: #d5deea;
-    border: 1px solid rgba(255, 255, 255, 0.14); padding: 0.45rem 1rem; border-radius: 9999px; cursor: pointer; transition: all 0.15s; }
-  .chip[aria-pressed="true"] { color: #0b1b33; background: #fff; border-color: #fff; }
+  /* Clear glass on the dark slab: a fixed sheen over a tint, lit edges. Only the tint, the edges and the text colour
+     change between states, so hovering fades smoothly rather than swapping one gradient for another. */
+  .chip { font-family: var(--font-body); font-size: 0.95rem; color: #d5deea; border: 0; padding: 0.45rem 1rem; border-radius: 9999px; cursor: pointer;
+    background-color: rgba(255, 255, 255, 0.05); background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 6px 14px -8px rgba(0, 0, 0, 0.5);
+    transition: background-color 0.2s, box-shadow 0.2s, color 0.2s; }
+  .chip:hover { background-color: rgba(255, 255, 255, 0.11); color: #fff; }
+  .chip[aria-pressed="true"] { color: #0b1b33; background-color: #fff;
+    box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 rgba(11, 27, 51, 0.12), 0 8px 18px -8px rgba(0, 0, 0, 0.55); }
   .footnote { margin-top: 1.25rem; font-size: 0.92rem; color: var(--text-dim); max-width: 72ch; }
 
   /* Font specimens: product cards */
   .specimens { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: auto; gap: 1.25rem; }
+  @media (max-width: 1100px) { .specimens { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .spec { background: #fff; border-radius: 10px; padding: 1.4rem 1.4rem 1.5rem; display: grid; grid-row: span 4;
     grid-template-rows: subgrid; grid-template-columns: minmax(0, 1fr); row-gap: 0; align-items: start; justify-items: start;
     box-shadow: 0 16px 32px -12px rgba(50, 50, 93, 0.16), 0 4px 10px -4px rgba(0, 0, 0, 0.08); overflow: hidden; }
@@ -913,10 +913,12 @@ const STYLES = `<style>
   .spec-words span { display: block; font-size: 2.3rem; color: var(--ink); }
   .spec-words span + span { margin-top: 0.15rem; }
   .spec-words mark { background: none; color: inherit; box-shadow: inset 0 -3px 0 rgba(217, 45, 32, 0.55); }
-  .stamp { display: inline-flex; white-space: nowrap; max-width: 100%; font-variant-numeric: tabular-nums; font-size: 0.82rem;
-    font-weight: 600; border-radius: 9999px; overflow: hidden; }
-  .stamp > span { padding: 0.18rem 0.65rem; display: inline-block; }
-  .stamp > span + span { box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.6); }
+  /* The grade and its percentage stay on one line where they fit; in a narrow card they wrap rather than clip,
+     with a hairline on each part's top and left edge so the divider shows either way */
+  .stamp { display: inline-flex; flex-wrap: wrap; max-width: 100%; font-variant-numeric: tabular-nums; font-size: 0.82rem;
+    font-weight: 600; border-radius: 12px; overflow: hidden; }
+  .stamp > span { padding: 0.18rem 0.65rem; display: inline-block; white-space: nowrap; flex: 1 0 auto;
+    box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
   .stamp.g4 { background: #fee4e2; color: #b42318; }
   .stamp.g3 { background: #fef0c7; color: #93370d; }
   .stamp.g2 { background: #fef7e6; color: #93370d; }

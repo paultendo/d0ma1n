@@ -14,7 +14,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "THIRD-PARTY-NOTICES.md"
   ],
   "scripts": {
     "build": "tsup",
@@ -24,7 +25,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "namespace-guard": "^0.22.0"
+    "namespace-guard": "^0.23.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -46,7 +47,10 @@
     "dns"
   ],
   "license": "MIT",
-  "author": "Paul Wood (@paultendo)",
+  "author": {
+    "name": "Paul Wood FRSA (@paultendo)",
+    "url": "https://paultendo.github.io"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/paultendo/d0ma1n"

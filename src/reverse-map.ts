@@ -101,7 +101,7 @@ export function toCodepoint(ch: string): string {
  *
  * Sources:
  * 1. CONFUSABLE_MAP_FULL: TR39 confusable mappings (char -> prototype)
- * 2. CONFUSABLE_WEIGHTS: pairs measured by confusable-vision release 2, including pairs between two
+ * 2. CONFUSABLE_WEIGHTS: pairs measured by confusable-vision (release 2026.09.26 in namespace-guard 0.23), including pairs between two
  *    non-ASCII scripts (Hangul/Han, Cyrillic/Greek, Katakana/Hiragana)
  */
 export function buildPrototypeBuckets(options?: {
@@ -167,13 +167,17 @@ export function buildPrototypeBuckets(options?: {
 
   // 1. CONFUSABLE_MAP_FULL: TR39 mappings (confusable -> prototype)
   //    Add bidirectionally: prototype gets the confusable, confusable gets the prototype.
-  for (const [char, prototype] of Object.entries(CONFUSABLE_MAP_FULL)) {
-    if (char === prototype) continue;
+  for (const [char, mapped] of Object.entries(CONFUSABLE_MAP_FULL)) {
+    // namespace-guard 0.23 also carries Unicode's ASCII entries (1 as l, 0 as o, m as rn) and multi-letter prototypes;
+    // ASCII swaps come from measured data in ascii.ts, and a variant here stands for one letter (rn is read as m)
+    if (char.codePointAt(0)! < 0x80) continue;
+    const prototype = mapped === "rn" ? "m" : mapped;
+    if (prototype.length !== 1 || char === prototype) continue;
 
     // Look up visual weight if available (bidirectional lookup, matching lookupWeight pattern)
     const weights = CONFUSABLE_WEIGHTS as ConfusableWeights;
     const w = weights[char]?.[prototype] ?? weights[prototype]?.[char];
-    // CONFUSABLE_MAP_FULL lowercases its prototypes, so Lisu ꓖ (TR39: G) arrives as a lookalike of g. When release 2
+    // CONFUSABLE_MAP_FULL lowercases its prototypes, so Lisu ꓖ (TR39: G) arrives as a lookalike of g. When the release
     // measured it only against the capital, it imitates the capital, which a lowercase domain never shows: skip it.
     const upper = prototype.toUpperCase();
     if (!w && upper !== prototype && (weights[char]?.[upper] ?? weights[upper]?.[char])) continue;

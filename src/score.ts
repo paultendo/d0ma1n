@@ -31,7 +31,7 @@ const WEB_SAFE_FONTS = new Set([
  * Compute the composite danger score for a variant.
  *
  * Formula: min(stableDanger_i) * (1 - 0.1 * (editCount - 1)). Each stableDanger is the share of text fonts where that
- * substitution looks alike (confusable-vision release 2); the whole label can only look alike where every substitution
+ * substitution looks alike (confusable-vision's measurements); the whole label can only look alike where every substitution
  * does, so the weakest bounds it.
  * Full single-script replacements skip the multi-edit penalty (they are the
  * most dangerous attack vector: the entire label is a single non-Latin script).
@@ -80,6 +80,8 @@ const DISPLAY_FONTS = new Set([
   "Academy Engraved LET", "Apple Chancery", "Apple Symbols", "Bodoni 72 Smallcaps", "Bradley Hand", "Brush Script MT",
   "Chalkboard", "Chalkboard SE", "Chalkduster", "Copperplate", "Herculanum", "Luminari", "Marker Felt", "Noteworthy",
   "Papyrus", "Party LET", "Phosphate", "Savoye LET", "SignPainter", "Snell Roundhand", "Trattatello", "Zapfino",
+  "Corsiva Hebrew", "Diwan Thuluth", "Farisi", "Mishafi", "Mishafi Gold", "Bodoni Ornaments", "Symbol", "Webdings",
+  "Wingdings", "Wingdings 2", "Wingdings 3", "Zapf Dingbats",
 ]);
 
 /**

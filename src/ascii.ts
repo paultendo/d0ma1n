@@ -3,13 +3,14 @@ import type { RawVariant } from "./generate.js";
 import type { Substitution } from "./types.js";
 
 /**
- * ASCII lookalikes: ordinary letters and digits that pass for others, one for one (l for 1, 0 for o) or two for one
- * (rn for m, vv for w, cl for d). They are registrable under every TLD and shown as written everywhere, browsers
- * included, which is why most real lookalike domains use them.
+ * ASCII lookalikes: ordinary letters and digits that pass for others, one for one (1 for l, 0 for o) or two for one
+ * (rn for m). They are registrable under every TLD and shown as written everywhere, browsers included, which is why
+ * most real lookalike domains use them.
  *
- * The pairs and their scores come from confusable-vision's ASCII search (scripts/score-ascii-sequences.ts): every
- * letter and digit against every other, and every two-character sequence against every single one, measured the way
- * release 2 measures characters. Only pairs that pass the release's thresholds are used.
+ * The pairs and their scores come from confusable-vision's in-place check (release 2026.09.26 on): the ASCII pairs
+ * Unicode lists, each set between other letters in five common fonts at text size, at 1x and 2x. A pair's score is the
+ * share of those ten renderings where it is alike; 1 for l holds only in Times New Roman, 0 for o only in Georgia, rn
+ * for m only in Arial at 1x. d for cl and w for vv do not hold at 16 px.
  */
 
 type Edit = { start: number; len: number; replacement: string; sub: Substitution; font: string };

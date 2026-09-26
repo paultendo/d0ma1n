@@ -304,7 +304,7 @@ function buildSpoofReasons(
     reasons.push(reason("confusable-match", `Measured confusable substitution path to ${target}.`, 16));
   }
 
-  // Danger is the share of text fonts where each substitution looks alike (confusable-vision release 2): alike in half
+  // Danger is the share of text fonts where each substitution looks alike (confusable-vision's measurements): alike in half
   // of them is already strong
   if (danger >= 0.5) {
     reasons.push(reason("high-danger", `Average confusable danger ${danger.toFixed(3)}.`, 28));

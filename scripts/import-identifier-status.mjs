@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const src = resolve(process.argv[2] ?? join(root, "../confusable-vision/data/input/IdentifierStatus.txt"));
 const text = readFileSync(src, "utf8");
-const date = text.match(/^# Date: (\S+)/m)?.[1] ?? "unknown";
+const date = text.match(/^# Date: ([^,\s]+)/m)?.[1] ?? "unknown";
 
 const ranges = [];
 for (const raw of text.split("\n")) {

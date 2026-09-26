@@ -24,15 +24,15 @@ const MASS_NS = /(^|\.)(domaincontrol\.com|registrar-servers\.com|dns-parking\.c
 
 type DnsFacts = { registrar?: string; ns?: string[]; spf?: string; dmarc?: string };
 const host = (n: string) => n.toLowerCase().replace(/\.$/, "");
-const mailboxes = (dmarc?: string) => new Set([...(dmarc ?? "").matchAll(/mailto:([^,;\s!]+)/gi)].map((m) => m[1]!.toLowerCase()));
 
 /**
  * Whether a registered lookalike is probably the brand's own, and why. Strong evidence counts alone, and is costly
  * to fake: a brand-protection registrar; name servers at one of them, under the brand's own domain, in the brand's
  * Cloudflare account, or the brand's own set (a stranger who points a domain at name servers that do not host it
- * gets a domain that does not resolve). Supporting evidence counts only together with the same registrar: a shared
- * name server, the same DMARC report mailbox, or email records that name the brand's domain, which anyone can write.
- * The same registrar never counts alone, because attackers use popular registrars too.
+ * gets a domain that does not resolve). Supporting evidence counts only together with the same registrar: a name
+ * server the two share that isn't a mass-market one. The same registrar never counts alone, because attackers use
+ * popular registrars too. Email records never count: an SPF or DMARC record that names the brand, or sends DMARC
+ * reports to the brand's mailbox (which the brand publishes), is something anyone can write.
  */
 export function brandEvidence(brandDomain: string, brand: DnsFacts, v: DnsFacts): { holder: NonNullable<DnsResult["holder"]>; reason?: string } {
   const r = v.registrar ? norm(v.registrar) : "";
@@ -41,8 +41,6 @@ export function brandEvidence(brandDomain: string, brand: DnsFacts, v: DnsFacts)
   for (const n of ns) for (const [re, name] of BRAND_NS) if (re.test(n)) return { holder: "brand-protection-registrar", reason: "Name servers at " + name };
   const domain = brandDomain.toLowerCase();
   if (ns.some((n) => n === domain || n.endsWith("." + domain))) return { holder: "brand-dns", reason: "Name servers on " + domain };
-  const esc = domain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const names = new RegExp("(include:|redirect=|@|\\.)" + esc + "(\\s|;|,|$)", "i");
   const sameSet = ns.length > 0 && ns.length === own.size && ns.every((n) => own.has(n));
   if (sameSet && ns.every((n) => n.endsWith(".ns.cloudflare.com"))) return { holder: "brand-dns", reason: "The same Cloudflare account as " + domain };
   if (sameSet && !ns.some((n) => MASS_NS.test(n))) return { holder: "brand-dns", reason: "The same name servers as " + domain };
@@ -50,12 +48,10 @@ export function brandEvidence(brandDomain: string, brand: DnsFacts, v: DnsFacts)
     const b = norm(brand.registrar);
     const sameRegistrar = r === b || r.includes(b) || b.includes(r) ||
       REGISTRAR_FAMILIES.some((f) => f.some((x) => r.includes(x)) && f.some((x) => b.includes(x)));
-    const sharedNs = ns.some((n) => own.has(n) && !MASS_NS.test(n));
-    const ownBoxes = mailboxes(brand.dmarc), sameReports = [...mailboxes(v.dmarc)].some((m) => ownBoxes.has(m));
-    const namesBrand = (!!v.spf && names.test(v.spf)) || (!!v.dmarc && names.test(v.dmarc));
-    if (sameRegistrar && (sharedNs || sameReports || namesBrand)) {
-      return { holder: "brand-registrar", reason: "The same registrar as " + domain +
-        (sharedNs ? ", and a shared name server" : namesBrand ? ", and email records that name it" : ", and the same DMARC reports") };
+    // One Cloudflare name server is shared by countless accounts; only the whole pair (above) says "same account"
+    const sharedNs = ns.some((n) => own.has(n) && !MASS_NS.test(n) && !n.endsWith(".ns.cloudflare.com"));
+    if (sameRegistrar && sharedNs) {
+      return { holder: "brand-registrar", reason: "The same registrar as " + domain + ", and a shared name server" };
     }
   }
   return { holder: "other-registrar" };

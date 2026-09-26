@@ -32,6 +32,21 @@ describe("brandEvidence", () => {
     expect(brandEvidence("paypal.com", paypal, { ...faked, registrar: "MarkMonitor Inc." }).holder).toBe("brand-protection-registrar");
   });
 
+  it("never counts email records, even with the same registrar, since anyone can write them", () => {
+    const brand = { registrar: "GoDaddy.com, LLC", ns: ["ns1.brand-dns.net", "ns2.brand-dns.net"], dmarc: "v=DMARC1; p=reject; rua=mailto:dmarc@brand.com" };
+    // An attacker at the brand's registrar who names the brand in SPF and sends DMARC reports to its mailbox
+    const attacker = { registrar: "GoDaddy.com, LLC", ns: ["ns01.domaincontrol.com"], spf: "v=spf1 include:brand.com -all", dmarc: "v=DMARC1; p=none; rua=mailto:dmarc@brand.com" };
+    expect(brandEvidence("brand.com", brand, attacker).holder).toBe("other-registrar");
+    // A name server only the brand's DNS host would give it still counts, with the same registrar
+    expect(brandEvidence("brand.com", brand, { registrar: "GoDaddy.com, LLC", ns: ["ns1.brand-dns.net", "ns9.other.net"] }).holder).toBe("brand-registrar");
+  });
+
+  it("doesn't count one shared Cloudflare name server: countless accounts share each", () => {
+    const brand = { registrar: "GoDaddy.com, LLC", ns: ["adam.ns.cloudflare.com", "bella.ns.cloudflare.com"] };
+    expect(brandEvidence("brand.io", brand, { registrar: "GoDaddy.com, LLC", ns: ["adam.ns.cloudflare.com", "carl.ns.cloudflare.com"] }).holder)
+      .toBe("other-registrar");
+  });
+
   it("counts the same Cloudflare account", () => {
     const cf = { ns: ["adam.ns.cloudflare.com", "bella.ns.cloudflare.com"] };
     expect(brandEvidence("brand.io", cf, { ns: ["bella.ns.cloudflare.com", "adam.ns.cloudflare.com"] }).holder).toBe("brand-dns");

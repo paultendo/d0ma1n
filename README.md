@@ -3,13 +3,13 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Find lookalike domains targeting your brand, before someone else registers them. Inspired by [dnstwist](https://github.com/elceef/dnstwist), built on measured visual similarity instead of static tables.
+Find lookalike domains targeting your brand, before someone else registers them. Inspired by [dnstwist](https://github.com/elceef/dnstwist), built on measured visual similarity instead of static tables. The measurements come from [confusable-vision](https://github.com/paultendo/confusable-vision), which [addons.mozilla.org](https://addons.mozilla.org/) also uses to check add-on names ([Mozilla's source](https://github.com/mozilla/addons-server/blob/master/src/olympia/amo/confusables.py#L4-L6)).
 
-Try it online at [d0ma1n.app](https://d0ma1n.app) (still going live, use [d0ma1n.paultendo.workers.dev](https://d0ma1n.paultendo.workers.dev) in the meantime), or install the CLI below.
+Try it online at [d0ma1n.app](https://d0ma1n.app), or install the CLI below.
 
 ## How it works
 
-d0ma1n takes a domain name, generates its visually confusable variants, and checks which ones are already registered. Each substitution is weighted by confusable-vision's measurements (release 2026.09.24): the share of text fonts in which the two characters look alike at the same size and on the same baseline, within one font or across fonts.
+d0ma1n takes a domain name, generates its visually confusable variants, and checks which ones are already registered. Each substitution is weighted by confusable-vision's measurements (release 2026.09.26, through namespace-guard 0.23): the share of text fonts in which the two characters look alike at the same size and on the same baseline, within one font or across fonts.
 
 By default, d0ma1n uses IDN-aware "realistic" mode: substitutions within a script, and labels written wholly in one other script. Each variant is checked against what the TLD's registry actually accepts (see [Registry rules](#registry-rules)), and a label IDNA would refuse or change is never reported. Mixed-script labels, which most registries refuse and browsers show as punycode, are only reported when they turn out to be registered already.
 
@@ -19,15 +19,16 @@ It also applies a policy layer to each candidate variant, so the output is not j
 $ d0ma1n scan paypal.com --resolve --top 6
 
 d0ma1n scan: paypal.com
-17 lookalike labels generated, showing 6 domains
+72 lookalike labels generated, showing 7 domains
 
-  Domain          Danger  Policy  Display   Edits  Script(s)  Punycode              Status
-  раураӏ.com      35%     block   punycode  6      Cyrillic   xn--80aa0cbo65f.com   ACTIVE
-  pаypal.com      81%     block   punycode  1      Cyrillic   xn--pypal-4ve.com     parked
-  paypaǀ.com      13%     review  unicode   1      Latin      xn--paypa-9tb.com     parked
-  paypaı.com      12%     review  unicode   1      Latin      xn--paypa-r4a.com     parked
-  paỵpal.com      39%     review  unicode   1      Latin      xn--papal-yg2b.com    ---
-  ꓑꓮꓬꓑꓮꓲ.com      33%     review  unicode   6      Lisu       xn--4l8aa4fhcy.com    ---
+  Domain           Danger  Policy  Display   Edits  Script(s)  Punycode                  Status
+  раураӏ.com       40%     block   punycode  6      Cyrillic   xn--80aa0cbo65f.com       ACTIVE
+  pаypal.com       88%     block   punycode  1      Cyrillic   xn--pypal-4ve.com         parked
+  ραγραι.com       5%      block   unicode   6      Greek      xn--mxaafz0bc.com         parked
+  раураӏ.xn--p1ai  40%     block   punycode  6      Cyrillic   xn--80aa0cbo65f.xn--p1ai  ---
+  paypaꟾ.com       50%     review  punycode  1      Latin      xn--paypa-x93s.com        ---
+  paỵpal.com       45%     review  unicode   1      Latin      xn--papal-yg2b.com        ---
+  paỵpaı.com       16%     review  unicode   2      Latin      xn--papa-oza1386b.com     ---
 ```
 
 Danger is the share of text fonts where the weakest substitution in the label looks alike. The mixed-script pаypal.com is shown because it is already registered, although registries refuse such labels today.
@@ -38,7 +39,8 @@ This works in every direction. Scan a Cyrillic domain and d0ma1n finds Latin and
 
 ## Key features
 
-- **Measured confusable pairs** from confusable-vision (372 in namespace-guard 0.21), checked at real size and across fonts
+- **Measured confusable pairs** from confusable-vision (2,300 in namespace-guard 0.23), checked at real size, within one font and across fonts, in 322 fonts
+- **ASCII lookalikes** (1 for l, 0 for o, rn for m) with the fonts where each is alike, from confusable-vision's in-place check
 - **IDN-aware filtering** only generates variants browsers display as Unicode (realistic mode, on by default)
 - **Registry-aware:** each variant is checked against the rules of its TLD's registry, for every delegated TLD
 - **Policy-aware triage** via `confusable-policy`, so realistic domain threats rise above operational noise
@@ -137,12 +139,12 @@ const result = await scan("paypal.com", {
 // result.variants[0]:
 // {
 //   domain: "раураӏ.com",
-//   dangerScore: 0.35,
+//   dangerScore: 0.4,
 //   policy: { decision: "block", profile: "verisign-com", displayMode: "punycode", ... },
 //   substitutions: [{ position: 0, original: "p", replacement: "р", script: "Cyrillic" }, ...],
 //   bestFont: "Arial",
-//   bestFontScore: 0.9007,
-//   punycode: "xn--pypal-4ve.com",
+//   bestFontScore: 1,
+//   punycode: "xn--80aa0cbo65f.com",
 //   dns: { registered: true, hasMx: true, threatLevel: "active" }
 // }
 ```
@@ -164,7 +166,7 @@ npx wrangler dev
 
 Four open-source projects work together:
 
-1. **[confusable-vision](https://github.com/paultendo/confusable-vision)** casts rays through font outlines (every macOS system font, plus Roboto) and measures how alike Unicode characters look at the same size and on the same baseline, within one font and across fonts. This produces the measured confusable pairs.
+1. **[confusable-vision](https://github.com/paultendo/confusable-vision)** casts rays through font outlines (322 fonts: every font on macOS, plus Roboto, Noto and DejaVu) and measures how alike Unicode characters look at the same size and on the same baseline, within one font and across fonts. This produces the measured confusable pairs.
 
 2. **[namespace-guard](https://github.com/paultendo/namespace-guard)** ships the maps as runtime data and provides `skeleton()`, `areConfusable()`, and cross-script detection.
 
@@ -172,7 +174,9 @@ Four open-source projects work together:
 
 4. **d0ma1n** inverts the maps into bidirectional lookup buckets, generates domain variants through k-edit enumeration, scores them, enriches them with policy verdicts, and resolves DNS.
 
-The similarity data comes from confusable-vision release 2 (2026-09-24), which compares characters across twelve script sets (Latin, Cyrillic, Greek, Arabic, Han, Hangul, Katakana, Hiragana, Devanagari, Thai, Georgian and Armenian) at the size and baseline position they have in running text. d0ma1n uses it to find lookalikes of Latin-letter domains.
+The similarity data comes from confusable-vision release 2026.09.26, which compares every letter and digit each of 322 fonts draws, at the size and baseline position they have in running text, within one font and across fonts. Its lookalikes of ASCII letters are also checked in place: set between other letters in common fonts at text size. d0ma1n uses the pairs that involve an ASCII letter or two scripts to find lookalikes of domains.
+
+The same data is used beyond d0ma1n: by Mozilla's [addons-server](https://github.com/mozilla/addons-server), the code behind [addons.mozilla.org](https://addons.mozilla.org/), in its add-on name checks; by [disarm](https://disarm.dev/) and [SilverSpeak](https://acmcmc.github.io/silverspeak/); and, through namespace-guard, by [agent-sanitizer](https://github.com/AlexanderMattTurner/agent-sanitizer) ([deps.dev](https://deps.dev/npm/namespace-guard/0.20.0/dependents)). See [confusable-vision's Used by](https://github.com/paultendo/confusable-vision#used-by).
 
 ## Project structure
 

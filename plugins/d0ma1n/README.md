@@ -28,6 +28,10 @@ For Codex or another agent, copy `skills/lookalike-domains` into your agent's sk
 
 d0ma1n builds lookalikes from [confusable-vision](https://github.com/paultendo/confusable-vision), which measures 64,751 characters in 322 fonts, through the [namespace-guard](https://github.com/paultendo/namespace-guard) library. addons.mozilla.org checks add-on names for lookalikes with characters from confusable-vision.
 
+## Privacy
+
+d0ma1n doesn't ask for or keep personal data: see the [privacy policy](https://github.com/paultendo/d0ma1n/blob/main/PRIVACY.md).
+
 ## License
 
 MIT, by Paul Wood FRSA ([@paultendo](https://github.com/paultendo)).

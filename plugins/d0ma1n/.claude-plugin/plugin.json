@@ -1,0 +1,13 @@
+{
+  "name": "d0ma1n",
+  "version": "1.0.0",
+  "description": "Find lookalike (IDN homograph) domains of a real domain, see which are registered, live or able to receive email, and read a suspicious domain back to the one it imitates.",
+  "author": {
+    "name": "Paul Wood FRSA",
+    "url": "https://paultendo.github.io"
+  },
+  "homepage": "https://d0ma1n.app",
+  "repository": "https://github.com/paultendo/d0ma1n",
+  "license": "MIT",
+  "keywords": ["domains", "homograph", "idn", "homoglyph", "confusables", "phishing", "typosquatting", "brand-protection", "punycode", "security"]
+}

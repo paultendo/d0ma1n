@@ -345,6 +345,7 @@ export function renderTermsPage(): string {
 
       <h2>Rate limiting</h2>
       <p>To prevent abuse, requests are rate-limited. Excessive or automated use may result in temporary or permanent blocking.</p>
+      <p>Occasional lookups by tools and AI agents working for a person, such as a coding assistant checking one domain, are welcome within these limits. Please send a User-Agent that says what's calling.</p>
 
       <h2>Data</h2>
       <p>Scan results may be cached for up to one hour to improve performance. No personal data is collected or stored beyond what is necessary to process requests (IP addresses for rate limiting, retained in memory only).</p>

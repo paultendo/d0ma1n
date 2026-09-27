@@ -162,6 +162,17 @@ cd worker
 npx wrangler dev
 ```
 
+## Use it from an AI agent
+
+A skill teaches Claude Code, Codex and other agents to check a domain for lookalikes through the web app's API, and to explain what they find:
+
+```bash
+claude plugin marketplace add paultendo/skills
+claude plugin install d0ma1n@paultendo
+```
+
+For Codex or another agent, copy [`plugins/d0ma1n/skills/lookalike-domains`](plugins/d0ma1n/skills/lookalike-domains) into its skills folder.
+
 ## Where the data comes from
 
 Four open-source projects work together:

@@ -15,7 +15,7 @@ Nothing else is sent, and no key is needed. d0ma1n caches results for an hour an
 
 ## Install
 
-In Claude Code:
+It's awaiting approval for Anthropic's plugin directory. Until then, you can install it from the command line in Claude Code:
 
 ```bash
 claude plugin marketplace add paultendo/skills

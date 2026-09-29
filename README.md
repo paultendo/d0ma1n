@@ -164,7 +164,9 @@ npx wrangler dev
 
 ## Use it from an AI agent
 
-A skill teaches Claude Code, Codex and other agents to check a domain for lookalikes through the web app's API, and to explain what they find:
+A skill teaches Claude Code, Codex and other agents to check a domain for lookalikes through the web app's API, and to explain what they find.
+
+It's awaiting approval for Anthropic's plugin directory. Until then, you can install it from the command line:
 
 ```bash
 claude plugin marketplace add paultendo/skills

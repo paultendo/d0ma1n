@@ -1,5 +1,6 @@
 {
   "name": "d0ma1n",
+  "displayName": "d0ma1n",
   "version": "1.0.0",
   "description": "Find lookalike (IDN homograph) domains of a real domain, see which are registered, live or able to receive email, and read a suspicious domain back to the one it imitates.",
   "author": {
@@ -21,5 +22,8 @@
     "punycode",
     "security"
   ],
-  "privacyPolicyUrl": "https://github.com/paultendo/d0ma1n/blob/main/PRIVACY.md"
+  "privacyPolicyUrl": "https://github.com/paultendo/d0ma1n/blob/main/PRIVACY.md",
+  "documentationUrl": "https://github.com/paultendo/d0ma1n/tree/main/plugins/d0ma1n#readme",
+  "supportUrl": "https://github.com/paultendo/d0ma1n/issues",
+  "termsOfServiceUrl": "https://d0ma1n.app/terms"
 }
